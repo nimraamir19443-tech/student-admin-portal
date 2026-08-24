@@ -8,4 +8,5 @@ npm-debug.log*
 .idea/
 dist/
 build/
-
+.env.*
+!.env.example

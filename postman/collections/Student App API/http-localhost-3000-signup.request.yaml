@@ -1,0 +1,19 @@
+$kind: http-request
+name: http://localhost:3000/signup
+description: ""
+url: http://localhost:3000/login
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"email\": \"john@example.com\",\r
+
+    \  \"password\": \"123456\"\r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: ""
+    language: text/javascript
+order: 319450359269186
