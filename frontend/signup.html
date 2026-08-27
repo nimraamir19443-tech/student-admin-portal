@@ -103,7 +103,9 @@
       </div>
     </div>
 
+    <script src="/config.js"></script>
     <script>
+      const API_BASE = window.API_BASE_URL || '';
       const form = document.getElementById('signupForm');
       const message = document.getElementById('message');
 
@@ -116,7 +118,7 @@
         const password = document.getElementById('password').value;
 
         try {
-          const response = await fetch('/signup', {
+          const response = await fetch(API_BASE + '/signup', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, studentId, email, password })
