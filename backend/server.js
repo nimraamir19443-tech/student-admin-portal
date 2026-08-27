@@ -14,7 +14,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(frontendPath));
 
-const pool = process.env.DB_PASSWORD ? new Pool({
+const pool = process.env.DATABASE_URL ? new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false
+}) : process.env.DB_PASSWORD ? new Pool({
     user: "postgres",
     host: "localhost",
     database: "student_db",
@@ -302,6 +305,8 @@ app.get("/health", (req, res) => {
     res.json({ status: "ok" });
 });
 
-app.listen(3000, () => {
-    console.log("Server running at http://localhost:3000");
+const port = process.env.PORT || 3000;
+
+app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
 });
