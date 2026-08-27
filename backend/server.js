@@ -38,6 +38,11 @@ function writeStudents(students) {
     fs.writeFileSync(dataFilePath, JSON.stringify(students, null, 2));
 }
 
+function publicStudent(student) {
+    const { password, passwordHash, ...safeStudent } = student;
+    return safeStudent;
+}
+
 function readClasses() {
     try {
         return JSON.parse(fs.readFileSync(classesFilePath, "utf8"));
@@ -125,7 +130,7 @@ app.delete("/api/classes/:className", (req, res) => {
 
 app.get("/api/students", (req, res) => {
     const students = readStudents();
-    res.json(students);
+    res.json(students.map(publicStudent));
 });
 
 app.get("/api/students/:id", (req, res) => {
@@ -135,7 +140,7 @@ app.get("/api/students/:id", (req, res) => {
         return res.status(404).json({ message: "Student not found." });
     }
 
-    res.json(student);
+    res.json(publicStudent(student));
 });
 
 app.post("/api/students", (req, res) => {
