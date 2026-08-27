@@ -32,6 +32,23 @@
         font-size: 0.95rem;
         font-weight: normal;
       }
+      .top-links {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 18px;
+      }
+      .top-links a {
+        color: #fff;
+        background: #2563eb;
+        padding: 10px 16px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 0.9rem;
+      }
+      .top-links a:last-child {
+        background: #16a34a;
+      }
       .card {
         background: white;
         border-radius: 0 0 12px 12px;
@@ -187,6 +204,10 @@
       <div class="topbar">
         Student Admin Portal
         <p class="subtitle">Manage students, classes, subjects, and fees</p>
+        <nav class="top-links" aria-label="Account navigation">
+          <a href="/login">Login</a>
+          <a href="/signup">Sign up</a>
+        </nav>
       </div>
       <div class="card">
         <h2>Add Student</h2>
