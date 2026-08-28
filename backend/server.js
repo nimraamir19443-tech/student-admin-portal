@@ -310,6 +310,30 @@ app.get("/health", (req, res) => {
     res.json({ status: "ok" });
 });
 
+app.get("/api/database-status", async (req, res) => {
+    if (!pool) {
+        return res.status(503).json({
+            connected: false,
+            message: "PostgreSQL is not configured."
+        });
+    }
+
+    try {
+        const result = await pool.query("SELECT NOW() AS server_time, COUNT(*)::int AS student_count FROM students");
+        res.json({
+            connected: true,
+            serverTime: result.rows[0].server_time,
+            studentCount: result.rows[0].student_count
+        });
+    } catch (error) {
+        console.error("Database status error:", error.message);
+        res.status(503).json({
+            connected: false,
+            message: "PostgreSQL query failed."
+        });
+    }
+});
+
 const port = process.env.PORT || 3000;
 
 app.listen(port, () => {
