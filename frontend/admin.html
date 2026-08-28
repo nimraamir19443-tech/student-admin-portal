@@ -53,11 +53,23 @@
     td a { color:var(--blue); }
     .danger { box-shadow:none; }
     @media(max-width:900px) { .shell{grid-template-columns:1fr}.side{padding:20px}.nav{margin-top:14px}.grid{grid-template-columns:1fr}.stats{grid-template-columns:1fr} main{padding:28px 4%} h1{font-size:38px} }
+    .topline { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; font:13px Arial,sans-serif; color:var(--muted); }
+    .live { display:inline-flex; align-items:center; gap:7px; padding:7px 10px; border-radius:999px; background:#e9f8f2; color:#087f61; font-weight:bold; }
+    .live::before { content:""; width:7px; height:7px; border-radius:50%; background:#0f9d78; box-shadow:0 0 0 4px #c9f0e2; }
+    .panel h2 { display:flex; align-items:center; gap:10px; }
+    .panel h2::before { content:""; width:5px; height:22px; border-radius:5px; background:var(--blue); }
+    .grid > .panel:nth-child(2) h2::before { background:var(--mint); }
+    .toolbar { align-items:center; }
+    .toolbar input { min-width:0; }
+    .class-row:hover { background:#f7faff; padding-left:5px; padding-right:5px; border-radius:6px; }
+    .danger:hover { background:#b91c1c; }
+    .nav a:last-child { margin-top:34px; color:#f2a7a7; }
+    @media(max-width:600px) { .topline { align-items:flex-start; gap:12px; flex-direction:column; } }
   </style>
 </head>
 <body>
   <div class="shell"><aside class="side"><div class="brand">Campus<span>Desk</span></div><nav class="nav"><a class="active" href="/admin">Admin portal</a><a href="/student-portal">Student portal</a><a href="/login">Sign out</a></nav></aside>
-  <main><div class="eyebrow">Administration</div><h1>Good morning, admin.</h1><p class="lead">Keep your classes and student records organized in one calm workspace.</p>
+  <main><div class="topline"><span>Tuesday, August 18, 2026</span><span class="live">System online</span></div><div class="eyebrow">Administration</div><h1>Good morning, admin.</h1><p class="lead">Keep your classes and student records organized in one calm workspace.</p>
     <section class="stats"><div class="stat"><small>Total students</small><strong id="total">0</strong></div><div class="stat"><small>Total fees</small><strong id="fees">0</strong></div><div class="stat"><small>Active classes</small><strong id="classCount">0</strong></div></section>
     <div class="grid"><section class="panel"><h2>Add a student</h2><form id="studentForm"><label for="name">Student name</label><input id="name" required placeholder="e.g. Ali Khan" /><label for="className">Class</label><select id="className" required></select><label for="age">Age</label><input id="age" type="number" min="3" max="100" required /><label for="rollNo">Roll no</label><input id="rollNo" type="number" min="1" required /><label for="subject">Subject / program</label><input id="subject" required placeholder="e.g. ICS or BS Computer Science" /><label for="studentFees">Fees</label><input id="studentFees" type="number" min="0" required /><button>Add student</button></form><div id="message" class="message"></div><div class="manage"><h3>Manage classes</h3><form id="classForm"><input id="newClass" placeholder="e.g. BS 1st Semester" required /><button>Add class</button></form><div id="classList"></div></div></section>
       <section class="panel"><h2>Student directory</h2><div class="toolbar"><input id="search" placeholder="Search student..." /><select id="filter"><option value="">All classes</option></select></div><table><thead><tr><th>Name</th><th>Class</th><th>Roll no</th><th>Subject</th><th>Fees</th><th></th></tr></thead><tbody id="students"></tbody></table></section></div>
