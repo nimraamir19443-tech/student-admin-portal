@@ -65,6 +65,17 @@
     .danger:hover { background:#b91c1c; }
     .nav a:last-child { margin-top:34px; color:#f2a7a7; }
     @media(max-width:600px) { .topline { align-items:flex-start; gap:12px; flex-direction:column; } }
+    .side::after { content:"CONTROL CENTER"; display:block; margin:42px 14px 0; color:#6f819f; font:700 10px Arial,sans-serif; letter-spacing:2px; }
+    .nav a::first-letter { color:#9dc0ff; }
+    .grid > .panel:first-child { background:linear-gradient(180deg,#fff 0%,#fbfdff 100%); }
+    .grid > .panel:nth-child(2) { min-height:430px; }
+    .toolbar input { background:#fff; box-shadow:inset 0 1px 2px rgba(25,47,82,.04); }
+    .class-row span { color:#34445c; }
+    .class-row:last-child { border-bottom:0; }
+    .danger { transition:transform .18s ease, background .18s ease; }
+    .danger:hover { transform:translateY(-1px); }
+    td:first-child a { display:inline-flex; align-items:center; gap:8px; }
+    td:first-child a::before { content:""; display:inline-block; width:8px; height:8px; border-radius:50%; background:#63a1ff; }
   </style>
 </head>
 <body>
