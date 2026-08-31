@@ -1,2 +1,450 @@
-<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Student Portal | CampusDesk</title><style>:root{--ink:#172033;--blue:#2563eb;--muted:#687386;--line:#e5eaf2}*{box-sizing:border-box}body{margin:0;font-family:Georgia,'Times New Roman',serif;color:var(--ink);background:#f7f8fb}.wrap{max-width:1100px;margin:auto;padding:50px 5%}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:45px}.brand{font-size:25px;font-weight:bold}.brand span{color:var(--blue)}nav a{color:var(--blue);font:600 14px Arial,sans-serif;text-decoration:none;margin-left:18px}.eyebrow{font:700 12px Arial,sans-serif;letter-spacing:2px;color:var(--blue);text-transform:uppercase}h1{font-size:46px;margin:9px 0}.lead{color:var(--muted);font:16px Arial,sans-serif}.panel{margin-top:35px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:24px}table{width:100%;border-collapse:collapse;font:14px Arial,sans-serif}th,td{text-align:left;padding:15px 12px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-size:12px;text-transform:uppercase}a{color:var(--blue);font-weight:bold;text-decoration:none}@media(max-width:700px){.wrap{padding:28px 5%}.top{align-items:flex-start}.top nav{display:flex;flex-direction:column;gap:8px}.top nav a{margin:0}h1{font-size:36px}table{min-width:620px}.panel{overflow:auto}}</style><script src="/config.js"></script></head><body><div class="wrap"><header class="top"><div class="brand">Campus<span>Desk</span></div><nav><a href="/admin">Admin portal</a><a href="/login">Login</a></nav></header><div class="eyebrow">Student portal</div><h1>Your academic record.</h1><p class="lead">Browse registered students and open any profile for complete details.</p><section class="panel"><table><thead><tr><th>Name</th><th>Class</th><th>Roll no</th><th>Subject / program</th><th>Fees</th></tr></thead><tbody id="rows"></tbody></table></section></div><script>fetch((window.API_BASE_URL||'')+'/api/students').then(r=>r.json()).then(students=>{document.getElementById('rows').innerHTML=students.length?students.map(s=>`<tr><td><a href="/profile?id=${s.id}">${s.name}</a></td><td>${s.className||s.class||''}</td><td>${s.rollNo||s.roll_no||''}</td><td>${s.subject||''}</td><td>${s.fees||0}</td></tr>`).join(''):'<tr><td colspan="5">No students registered.</td></tr>'})</script></body></html>
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Portal | CampusDesk</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --panel-soft: #f8faff;
+      --sidebar: #121b2d;
+      --text: #172033;
+      --text-soft: #5d6c83;
+      --primary: #2f6af5;
+      --primary-2: #79c7ff;
+      --success: #17a36a;
+      --warning: #f0ad4e;
+      --danger: #ef5d5d;
+      --line: #e3ebf6;
+      --shadow: 0 18px 44px rgba(19, 34, 59, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; font-family: Arial, sans-serif; background: var(--bg); color: var(--text); }
+    body { transition: background 0.2s ease; }
+    .app-shell { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; }
+    .sidebar { background: linear-gradient(180deg, var(--sidebar) 0%, #101a2d 100%); color: white; padding: 30px 20px; }
+    .brand { font-size: 28px; font-weight: 800; margin-bottom: 36px; letter-spacing: -0.7px; }
+    .brand span { color: #a7c7ff; }
+    .nav { display: flex; flex-direction: column; gap: 8px; }
+    .nav a { text-decoration: none; color: #d9e5ff; padding: 12px 14px; border-radius: 10px; font-weight: 600; display: flex; align-items: center; gap: 10px; transition: all 0.2s ease; }
+    .nav a:hover, .nav a.active { background: rgba(255,255,255,0.08); transform: translateX(2px); }
+    .main { padding: 28px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 26px; }
+    .searchbar { flex: 1; max-width: 600px; position: relative; }
+    .searchbar input { width: 100%; padding: 13px 16px 13px 42px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--text); box-shadow: 0 6px 18px rgba(0,0,0,0.02); }
+    .searchbar::before { content: "⌕"; position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-soft); font-size: 22px; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .avatar-pill { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; }
+    .avatar-pill .badge { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: white; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+    .hero { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 22px; }
+    .eyebrow { color: var(--primary); text-transform: uppercase; letter-spacing: 2.4px; font-size: 11px; font-weight: 800; }
+    h1 { margin: 8px 0 8px; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -1.4px; }
+    .muted { color: var(--text-soft); }
+    .primary-btn { background: linear-gradient(135deg, var(--primary), #4a8af6); color: white; border: none; padding: 13px 18px; border-radius: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 10px 18px rgba(47,106,245,0.2); }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; margin-bottom: 22px; }
+    .stat-card, .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 20px; box-shadow: var(--shadow); }
+    .stat-card { position: relative; overflow: hidden; }
+    .stat-card::after { content: ""; position: absolute; width: 100px; height: 100px; right: -25px; bottom: -30px; border-radius: 50%; background: rgba(47,106,245,0.08); }
+    .stat-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-soft); font-weight: 700; }
+    .stat-value { font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 800; margin-top: 10px; }
+    .chip { display: inline-block; padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+    .chip.success { background: rgba(23,163,106,0.12); color: var(--success); }
+    .chip.warning { background: rgba(245,185,90,0.15); color: #c98507; }
+    .main-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; }
+    .panel h2 { margin: 0 0 16px; font-size: 1.1rem; }
+    .course-list { display: grid; gap: 14px; }
+    .course-item { display: flex; justify-content: space-between; gap: 12px; align-items: center; border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; background: var(--panel-soft); }
+    .course-meta strong { display: block; margin-bottom: 4px; font-size: 1rem; }
+    .course-meta small { color: var(--text-soft); }
+    .match-pill { background: rgba(23,163,106,0.12); color: var(--success); padding: 8px 10px; border-radius: 999px; font-weight: 700; min-width: 90px; text-align: center; }
+    .course-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    button.secondary { background: transparent; border: 1px solid var(--line); color: var(--text); }
+    button.ghost { background: rgba(47,106,245,0.08); border: 1px solid rgba(47,106,245,0.15); color: var(--primary); }
+    .mini-list { display: grid; gap: 12px; }
+    .mini-item { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--panel-soft); }
+    .mini-item strong { display: block; margin-bottom: 4px; }
+    .progress-wrap { margin-top: 18px; }
+    .progress-line { width: 100%; height: 10px; background: #edf2ff; border-radius: 999px; overflow: hidden; margin-top: 8px; }
+    .progress-bar { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--primary), var(--primary-2)); }
+    .two-col { display: grid; grid-template-columns: 1.15fr .85fr; gap: 20px; margin-top: 20px; }
+    .list-grid { display: grid; gap: 12px; }
+    .course-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+    .course-row:last-child { border-bottom: none; }
+    .fees-card { background: linear-gradient(135deg, rgba(47,106,245,0.08), rgba(110,196,255,0.1)); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+    .fee-amount { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.7px; margin: 6px 0; }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .muted-rule { color: var(--text-soft); }
+    .toast { position: fixed; right: 24px; bottom: 24px; background: var(--panel); border: 1px solid var(--line); color: var(--text); border-radius: 12px; padding: 14px 18px; box-shadow: var(--shadow); opacity: 0; transform: translateY(12px); pointer-events: none; transition: all 0.2s ease; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .modal { position: fixed; inset: 0; background: rgba(10, 16, 24, 0.56); display: none; align-items: center; justify-content: center; padding: 22px; }
+    .modal.show { display: flex; }
+    .modal-content { width: min(760px, 100%); background: var(--panel); border-radius: 20px; padding: 24px; border: 1px solid var(--line); box-shadow: var(--shadow); }
+    .close-btn { background: transparent; border: none; color: var(--text-soft); font-size: 2rem; cursor: pointer; line-height: 1; }
+    .tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px; }
+    .tag { background: rgba(47,106,245,0.08); color: var(--primary); border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700; }
+    .empty { color: var(--text-soft); padding: 14px 0; }
+    @media (max-width: 980px) { .app-shell { grid-template-columns: 1fr; } .sidebar { padding: 20px 18px; } .nav { flex-direction: row; flex-wrap: wrap; } .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .main-grid, .two-col { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) { .main { padding: 18px; } .hero, .topbar { flex-direction: column; align-items: stretch; } .stats-grid { grid-template-columns: 1fr; } .course-item { flex-direction: column; align-items: flex-start; } }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">Campus<span>Desk</span></div>
+      <nav class="nav">
+        <a href="/student-portal?studentId=STU-001" class="active">Overview</a>
+        <a href="/student-portal?studentId=STU-001">My Courses</a>
+        <a href="/student-portal?studentId=STU-001">Results</a>
+        <a href="/student-portal?studentId=STU-001">Attendance</a>
+        <a href="/student-portal?studentId=STU-001">Fees</a>
+        <a href="/profile?studentId=STU-001">Profile</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="searchbar">
+          <input id="globalSearch" type="text" placeholder="Search courses, instructors or announcements" />
+        </div>
+        <div class="topbar-right">
+          <div class="avatar-pill">
+            <div class="badge" id="studentInitials">AH</div>
+            <div><strong id="studentShortName">Ali Hassan</strong></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="hero">
+        <div>
+          <div class="eyebrow">Welcome back 👋</div>
+          <h1 id="studentNameHeading">Loading...</h1>
+          <div class="muted" id="studentMeta">Student dashboard</div>
+        </div>
+        <button class="primary-btn" id="nextCourseBtn">What Should I Take Next?</button>
+      </section>
+
+      <section class="stats-grid" id="statsGrid"></section>
+
+      <section class="main-grid">
+        <div class="panel">
+          <h2>Recommended Courses For You</h2>
+          <div id="recommendations" class="course-list"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Announcements</h2>
+          <div id="announcements" class="mini-list"></div>
+        </div>
+      </section>
+
+      <section class="two-col">
+        <div class="panel">
+          <h2>My Courses</h2>
+          <div id="myCourses" class="list-grid"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Academic Progress</h2>
+          <div id="progressOverview"></div>
+        </div>
+      </section>
+
+      <section class="two-col">
+        <div class="panel">
+          <h2>Attendance</h2>
+          <div id="attendanceList" class="list-grid"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Fees</h2>
+          <div class="fees-card">
+            <div class="muted-rule">Total fee</div>
+            <div class="fee-amount" id="feeAmount">PKR 0</div>
+            <div class="row"><span class="muted-rule">Paid</span><strong id="feePaid">PKR 0</strong></div>
+            <div class="row"><span class="muted-rule">Remaining</span><strong id="feeRemaining">PKR 0</strong></div>
+            <div class="row" style="margin-top: 12px;"><span class="muted-rule">Due date</span><strong id="feeDueDate">—</strong></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <div id="courseModal" class="modal" aria-modal="true">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+        <div>
+          <div class="eyebrow">Course Details</div>
+          <h2 id="modalCourseTitle" style="margin: 8px 0 0;">Course</h2>
+        </div>
+        <button class="close-btn" type="button" id="closeModal">×</button>
+      </div>
+      <div id="modalCourseBody"></div>
+    </div>
+  </div>
+
+  <script src="/config.js"></script>
+  <script>
+    const API_BASE = window.API_BASE_URL || '';
+    const studentId = new URLSearchParams(window.location.search).get('studentId') || 'STU-001';
+    const toast = document.getElementById('toast');
+    const modal = document.getElementById('courseModal');
+    const statsGrid = document.getElementById('statsGrid');
+    const recommendationsContainer = document.getElementById('recommendations');
+    const announcementsContainer = document.getElementById('announcements');
+    const myCoursesContainer = document.getElementById('myCourses');
+    const attendanceContainer = document.getElementById('attendanceList');
+    const progressOverview = document.getElementById('progressOverview');
+    const searchInput = document.getElementById('globalSearch');
+
+    function showToast(message, type = 'success') {
+      toast.textContent = message;
+      toast.style.borderColor = type === 'error' ? 'rgba(239,93,93,0.5)' : 'rgba(23,163,106,0.5)';
+      toast.classList.add('show');
+      clearTimeout(showToast.timeoutId);
+      showToast.timeoutId = setTimeout(() => toast.classList.remove('show'), 2600);
+    }
+
+    function renderStats(student) {
+      const cards = [
+        { label: 'Enrolled Courses', value: (student.enrolledCourses || []).length, tag: 'Open' },
+        { label: 'CGPA', value: (student.cgpa || 3.5).toFixed(2), tag: 'Good' },
+        { label: 'Attendance', value: `${student.attendance || 90}%`, tag: 'On track' },
+        { label: 'Pending Assignments', value: student.pendingAssignments || 0, tag: '4 due' }
+      ];
+
+      statsGrid.innerHTML = cards.map((card, index) => `
+        <div class="stat-card">
+          <div class="stat-label">${card.label}</div>
+          <div class="stat-value">${card.value}</div>
+          <span class="chip ${index === 2 ? 'warning' : 'success'}">${card.tag}</span>
+        </div>
+      `).join('');
+    }
+
+    function renderRecommendations(items) {
+      if (!items || !items.length) {
+        recommendationsContainer.innerHTML = '<div class="empty">No recommendations available yet.</div>';
+        return;
+      }
+
+      const filtered = items.filter((course) => {
+        const value = searchInput.value.trim().toLowerCase();
+        if (!value) return true;
+        return `${course.name} ${course.code} ${course.description}`.toLowerCase().includes(value);
+      });
+
+      recommendationsContainer.innerHTML = filtered.length ? filtered.map((course) => `
+        <div class="course-item">
+          <div class="course-meta">
+            <strong>${course.name}</strong>
+            <small>${course.code} · ${course.instructor}</small>
+          </div>
+          <div class="match-pill">${course.matchScore}% Match</div>
+          <div class="course-actions">
+            <button type="button" class="secondary" data-view-course="${course.id}">View Details</button>
+            <button type="button" class="ghost" data-enroll-course="${course.id}">Add Course</button>
+          </div>
+        </div>
+      `).join('') : '<div class="empty">No course matches your search.</div>';
+
+      bindCourseButtons();
+    }
+
+    function renderAnnouncements(items) {
+      announcementsContainer.innerHTML = (items || []).length ? items.slice(0, 3).map((item) => `
+        <div class="mini-item">
+          <strong>${item.title}</strong>
+          <div class="muted">${item.message}</div>
+        </div>
+      `).join('') : '<div class="empty">No announcements for now.</div>';
+    }
+
+    function renderMyCourses(items) {
+      myCoursesContainer.innerHTML = (items || []).length ? items.map((course) => `
+        <div class="course-row">
+          <div>
+            <strong>${course.name}</strong>
+            <div class="muted">${course.code} · ${course.instructor}</div>
+          </div>
+          <div>
+            <div class="muted">Progress: ${Math.max(35, Math.min(96, 60 + (course.semester % 3) * 8))}%</div>
+            <div class="muted">Attendance: 92%</div>
+          </div>
+        </div>
+      `).join('') : '<div class="empty">No courses added yet.</div>';
+    }
+
+    function renderProgress(student, courses) {
+      const completed = (student.completedCourses || []).length || 5;
+      const total = Math.max(completed + (student.currentCourses || []).length + 2, 12);
+      const percent = Math.round((completed / total) * 100);
+      progressOverview.innerHTML = `
+        <div class="row"><span class="muted-rule">Semester GPA</span><strong>${(student.cgpa || 3.5).toFixed(2)}</strong></div>
+        <div class="row"><span class="muted-rule">Overall CGPA</span><strong>${(student.cgpa || 3.5).toFixed(2)}</strong></div>
+        <div class="row" style="margin-top: 12px;"><span class="muted-rule">Degree Progress</span><strong>${completed}/${total}</strong></div>
+        <div class="progress-wrap">
+          <div class="progress-line"><div class="progress-bar" style="width:${percent}%"></div></div>
+        </div>
+        <div class="muted" style="margin-top: 12px;">${courses.length} active relevant courses available.</div>
+      `;
+    }
+
+    function renderAttendance(items) {
+      attendanceContainer.innerHTML = (items || []).length ? items.map((item) => `
+        <div class="course-row">
+          <div>
+            <strong>${item.course}</strong>
+          </div>
+          <strong>${item.percentage}%</strong>
+        </div>
+      `).join('') : '<div class="empty">Attendance data unavailable.</div>';
+    }
+
+    function bindCourseButtons() {
+      document.querySelectorAll('[data-view-course]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const courseId = button.getAttribute('data-view-course');
+          const response = await fetch(`${API_BASE}/api/courses/${encodeURIComponent(courseId)}`);
+          const course = await response.json();
+          openCourseModal(course);
+        });
+      });
+
+      document.querySelectorAll('[data-enroll-course]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const courseId = button.getAttribute('data-enroll-course');
+          await enrollCourse(courseId);
+        });
+      });
+    }
+
+    function openCourseModal(course) {
+      document.getElementById('modalCourseTitle').textContent = `${course.name} (${course.code})`;
+      document.getElementById('modalCourseBody').innerHTML = `
+        <p class="muted">${course.description}</p>
+        <div class="tag-list">
+          <span class="tag">${course.instructor}</span>
+          <span class="tag">${course.credits} Credit Hours</span>
+          <span class="tag">${course.difficulty}</span>
+          <span class="tag">${course.schedule}</span>
+        </div>
+        <div class="row"><span class="muted-rule">Prerequisites</span><strong>${(course.prerequisites || []).join(', ') || 'None'}</strong></div>
+        <div class="row" style="margin-top: 10px;"><span class="muted-rule">Duration</span><strong>${course.duration}</strong></div>
+        <div class="row" style="margin-top: 10px;"><span class="muted-rule">Enrollment Status</span><strong>${course.enrollmentStatus}</strong></div>
+        <div style="margin-top: 18px;">
+          <h3>What you will learn</h3>
+          <ul>${(course.whatYouWillLearn || []).map((item) => `<li>${item}</li>`).join('')}</ul>
+        </div>
+        <div style="margin-top: 18px; display:flex; gap:10px;">
+          <button type="button" class="primary-btn" data-enroll-course-modal="${course.id}">Enroll in this course</button>
+          <button type="button" class="secondary" id="closeModalSecondary">Close</button>
+        </div>
+      `;
+      document.getElementById('closeModal').onclick = () => modal.classList.remove('show');
+      document.getElementById('closeModalSecondary').onclick = () => modal.classList.remove('show');
+      const enrollButton = document.querySelector('[data-enroll-course-modal]');
+      enrollButton.addEventListener('click', async () => {
+        await enrollCourse(course.id);
+        modal.classList.remove('show');
+      });
+      modal.classList.add('show');
+    }
+
+    async function enrollCourse(courseId) {
+      try {
+        const response = await fetch(`${API_BASE}/api/courses/${encodeURIComponent(courseId)}/enroll`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentId })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          const missing = data.missingPrerequisites ? ` Missing: ${data.missingPrerequisites.join(', ')}` : '';
+          showToast(`${data.message || 'Enrollment blocked.'}${missing}`, 'error');
+          return;
+        }
+
+        showToast(data.message || 'Course successfully added!');
+        await loadDashboard();
+      } catch (error) {
+        showToast('Enrollment failed. Please try again.', 'error');
+      }
+    }
+
+    async function loadDashboard() {
+      try {
+        const response = await fetch(`${API_BASE}/api/student-dashboard/${encodeURIComponent(studentId)}`);
+        if (!response.ok) throw new Error('Dashboard not available');
+        const data = await response.json();
+        const student = data.student;
+        document.getElementById('studentNameHeading').textContent = student.name;
+        document.getElementById('studentMeta').textContent = `${student.program} • Semester ${student.semester}`;
+        document.getElementById('studentShortName').textContent = student.name.split(' ')[0];
+        document.getElementById('studentInitials').textContent = student.name.split(' ').slice(0,2).map(part => part[0]).join('').toUpperCase();
+
+        const fee = data.fees || { total: 0, paid: 0, remaining: 0, dueDate: '—' };
+        document.getElementById('feeAmount').textContent = `PKR ${Number(fee.total || 0).toLocaleString()}`;
+        document.getElementById('feePaid').textContent = `PKR ${Number(fee.paid || 0).toLocaleString()}`;
+        document.getElementById('feeRemaining').textContent = `PKR ${Number(fee.remaining || 0).toLocaleString()}`;
+        document.getElementById('feeDueDate').textContent = fee.dueDate || '—';
+
+        renderStats(student);
+        renderRecommendations(data.recommendations || []);
+        renderAnnouncements(data.announcements || []);
+        renderMyCourses(data.myCourses || []);
+        renderAttendance(data.attendance || []);
+        renderProgress(student, data.courses || []);
+        document.title = `${student.name} | Student Portal`;
+      } catch (error) {
+        document.getElementById('studentNameHeading').textContent = 'Student portal unavailable';
+        showToast('Unable to load student dashboard.', 'error');
+      }
+    }
+
+    document.getElementById('nextCourseBtn').addEventListener('click', async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/next-courses/${encodeURIComponent(studentId)}`);
+        const data = await response.json();
+        const list = data.map((course) => `
+          <div class="mini-item">
+            <strong>${course.name}</strong>
+            <div class="muted">${course.matchScore}% Match</div>
+            <div class="muted">${course.explanation}</div>
+          </div>
+        `).join('');
+        recommendationsContainer.innerHTML = list || '<div class="empty">No next recommended courses found.</div>';
+        showToast('Your next course recommendations are ready.');
+      } catch (error) {
+        showToast('Could not generate the next-course recommendation.', 'error');
+      }
+    });
+
+    searchInput.addEventListener('input', async () => {
+      const query = searchInput.value.trim();
+      if (!query) {
+        await loadDashboard();
+        return;
+      }
+
+      const response = await fetch(`${API_BASE}/api/student-dashboard/${encodeURIComponent(studentId)}`);
+      const data = await response.json();
+      const filtered = (data.recommendations || []).filter((course) => `${course.name} ${course.code} ${course.description}`.toLowerCase().includes(query.toLowerCase()));
+      renderRecommendations(filtered);
+    });
+
+    document.getElementById('closeModal').addEventListener('click', () => modal.classList.remove('show'));
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) modal.classList.remove('show');
+    });
+
+    loadDashboard();
+  </script>
+</body>
+</html>

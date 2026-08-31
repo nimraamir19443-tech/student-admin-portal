@@ -39,19 +39,24 @@
   <script src="/config.js"></script>
   <script>
     const API_BASE = window.API_BASE_URL || '';
-    const id = new URLSearchParams(location.search).get('id');
+    const params = new URLSearchParams(location.search);
+    const studentId = params.get('studentId') || params.get('id') || 'STU-001';
     const profile = document.getElementById('profile');
-    fetch(API_BASE + '/api/students/' + encodeURIComponent(id || ''))
+
+    fetch(API_BASE + '/api/student-dashboard/' + encodeURIComponent(studentId))
       .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
-      .then(student => {
-        const className = student.className || student.class || 'Not assigned';
-        const rollNo = student.rollNo || student.roll_no || 'Not assigned';
-        const initials = student.name.split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase();
-        document.title = student.name + ' | Student Dashboard';
+      .then(data => {
+        const student = data.student || {};
+        const program = student.program || 'Not assigned';
+        const className = student.currentSemester ? 'Semester ' + student.currentSemester : (student.semester || 'Not assigned');
+        const rollNo = student.studentId || 'Not assigned';
+        const feeTotal = Number((data.fees && data.fees.total) || student.feeTotal || 0);
+        const initials = (student.name || 'ST').split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase();
+        document.title = (student.name || 'Student') + ' | Student Dashboard';
         profile.innerHTML = `
-          <div class="hero"><div class="avatar">${initials}</div><div><div class="eyebrow">Individual student dashboard</div><h1>${student.name}</h1><p class="sub">Personal academic record and fee overview</p></div></div>
-          <section class="stats"><div class="stat"><small>Class</small><strong>${className}</strong></div><div class="stat"><small>Roll number</small><strong>${rollNo}</strong></div><div class="stat"><small>Age</small><strong>${student.age || '—'}</strong></div></section>
-          <div class="layout"><section class="panel"><h2>Academic information</h2><div class="detail"><span>Student name</span><strong>${student.name}</strong></div><div class="detail"><span>Class</span><strong>${className}</strong></div><div class="detail"><span>Roll number</span><strong>${rollNo}</strong></div><div class="detail"><span>Subject / program</span><strong>${student.subject || 'Not assigned'}</strong></div></section><section class="panel"><h2>Fee summary</h2><div class="fee-box"><span class="sub">Current fee amount</span><strong>${Number(student.fees || 0).toLocaleString()}</strong><div class="paid">Record active</div></div><div class="actions"><button onclick="window.print()">Print profile</button><button onclick="location.href='/admin'">Admin view</button></div></section></div>`;
+          <div class="hero"><div class="avatar">${initials}</div><div><div class="eyebrow">Individual student dashboard</div><h1>${student.name || 'Student Profile'}</h1><p class="sub">Personal academic record and fee overview</p></div></div>
+          <section class="stats"><div class="stat"><small>Program</small><strong>${program}</strong></div><div class="stat"><small>Student ID</small><strong>${rollNo}</strong></div><div class="stat"><small>CGPA</small><strong>${Number(student.cgpa || 0).toFixed(2)}</strong></div></section>
+          <div class="layout"><section class="panel"><h2>Academic information</h2><div class="detail"><span>Student name</span><strong>${student.name || '—'}</strong></div><div class="detail"><span>Program</span><strong>${program}</strong></div><div class="detail"><span>Semester</span><strong>${student.currentSemester || student.semester || '—'}</strong></div><div class="detail"><span>Attendance</span><strong>${student.attendance || 0}%</strong></div></section><section class="panel"><h2>Fee summary</h2><div class="fee-box"><span class="sub">Current fee amount</span><strong>PKR ${feeTotal.toLocaleString()}</strong><div class="paid">Record active</div></div><div class="actions"><button onclick="window.print()">Print profile</button><button onclick="location.href='/admin'">Admin view</button></div></section></div>`;
       })
       .catch(() => { profile.innerHTML = '<section class="panel"><h1>Student not found</h1><p class="error">This record may have been deleted or the profile link is invalid.</p></section>'; });
   </script>
