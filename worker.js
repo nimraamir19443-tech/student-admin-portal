@@ -2,12 +2,12 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const pageRoutes = {
-      "/": "/index.html",
-      "/login": "/login.html",
-      "/signup": "/signup.html",
-      "/admin": "/admin.html",
-      "/student-portal": "/student-portal.html",
-      "/profile": "/profile.html"
+      "/": "/",
+      "/login": "/login",
+      "/signup": "/signup",
+      "/admin": "/admin",
+      "/student-portal": "/student-portal",
+      "/profile": "/profile"
     };
 
     if (pageRoutes[url.pathname]) {
