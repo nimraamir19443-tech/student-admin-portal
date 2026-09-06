@@ -11,7 +11,23 @@ const classesFilePath = path.join(__dirname, "classes.json");
 const portalDataFilePath = path.join(__dirname, "portal-data.json");
 const frontendPath = path.join(__dirname, "..", "frontend");
 
-app.use(cors());
+const allowedOrigins = [
+    "https://student.namraamir788.workers.dev",
+    "https://students.namraamir788.workers.dev",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    ...(process.env.FRONTEND_URL || "").split(",").map((origin) => origin.trim()).filter(Boolean)
+];
+
+const corsOptions = {
+    origin: allowedOrigins,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    optionsSuccessStatus: 204
+};
+
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 app.use(express.static(frontendPath));
 
@@ -25,6 +41,18 @@ const pool = process.env.DATABASE_URL ? new Pool({
     password: process.env.DB_PASSWORD,
     port: 5432
 }) : null;
+
+const databaseReady = pool
+    ? pool.query(`
+        CREATE TABLE IF NOT EXISTS students (
+            id BIGSERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            student_id TEXT NOT NULL UNIQUE,
+            email TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL
+        )
+    `)
+    : Promise.resolve();
 
 function readJson(filePath, fallback) {
     try {
@@ -577,6 +605,7 @@ app.post("/signup", async (req, res) => {
     }
 
     try {
+        await databaseReady;
         const existingStudent = await pool.query(
             "SELECT * FROM students WHERE email = $1 OR student_id = $2",
             [email, studentId]
@@ -586,11 +615,12 @@ app.post("/signup", async (req, res) => {
             return res.status(400).json({ message: "Email or Student ID already exists." });
         }
 
+        const passwordHash = await bcrypt.hash(password, 10);
         const result = await pool.query(
             `INSERT INTO students (name, student_id, email, password)
             VALUES ($1, $2, $3, $4)
             RETURNING id, name, student_id, email`,
-            [name, studentId, email, password]
+            [name, studentId, email, passwordHash]
         );
 
         res.status(201).json({
@@ -631,7 +661,7 @@ app.post("/login", async (req, res) => {
 
         const student = result.rows[0];
 
-        if (student.password !== password) {
+        if (!await bcrypt.compare(password, student.password)) {
             return res.status(401).json({ message: "Invalid email or password." });
         }
 

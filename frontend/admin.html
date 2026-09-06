@@ -208,16 +208,29 @@
     }
 
     async function loadDashboard() {
-      const overviewResponse = await fetch(`${API_BASE}/api/admin-overview`);
-      const overview = await overviewResponse.json();
-      renderStats(overview);
-      renderStudents(overview);
-      renderAdmissions(overview);
-      renderAnnouncements(overview);
+      try {
+        const overviewResponse = await fetch(`${API_BASE}/api/admin-overview`);
+        if (!overviewResponse.ok) {
+          throw new Error(`Admin overview request failed (${overviewResponse.status}).`);
+        }
 
-      const rulesResponse = await fetch(`${API_BASE}/api/course-recommendation-rules`);
-      const rules = await rulesResponse.json();
-      renderRules(rules);
+        const overview = await overviewResponse.json();
+        renderStats(overview);
+        renderStudents(overview);
+        renderAdmissions(overview);
+        renderAnnouncements(overview);
+
+        const rulesResponse = await fetch(`${API_BASE}/api/course-recommendation-rules`);
+        if (!rulesResponse.ok) {
+          throw new Error(`Recommendation rules request failed (${rulesResponse.status}).`);
+        }
+
+        const rules = await rulesResponse.json();
+        renderRules(rules);
+      } catch (error) {
+        console.error('Unable to load admin dashboard:', error);
+        statsGrid.innerHTML = '<div class="empty">The dashboard is temporarily unavailable. Please try again after the backend is redeployed.</div>';
+      }
     }
 
     document.getElementById('ruleForm').addEventListener('submit', async (event) => {

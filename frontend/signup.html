@@ -124,7 +124,7 @@
             body: JSON.stringify({ name, studentId, email, password })
           });
 
-          const data = await response.json();
+          const data = await response.json().catch(() => ({}));
 
           if (!response.ok) {
             throw new Error(data.message || 'Signup failed');
@@ -136,7 +136,9 @@
             window.location.href = '/login';
           }, 1000);
         } catch (error) {
-          message.textContent = error.message;
+          message.textContent = error instanceof TypeError
+            ? `Unable to reach the signup server at ${API_BASE}/signup. Check that the Railway service is running.`
+            : error.message || 'Signup failed. Please try again.';
           message.className = 'message error';
         }
       });

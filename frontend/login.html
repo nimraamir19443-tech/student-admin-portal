@@ -121,7 +121,9 @@
           message.className = 'message success';
           window.location.href = '/';
         } catch (error) {
-          message.textContent = error.message;
+          message.textContent = error instanceof TypeError
+            ? 'The backend is unavailable. Please try again after the server is redeployed.'
+            : error.message;
           message.className = 'message error';
         }
       });
