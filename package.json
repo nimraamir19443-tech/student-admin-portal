@@ -1,0 +1,23 @@
+{
+  "name": "student-admin-portal",
+  "version": "1.0.0",
+  "description": "Student Admin Portal - Full Stack Application",
+  "main": "server/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "build": "npm run build:db",
+    "build:db": "node server/db/init.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "pg": "^8.11.3",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
+
