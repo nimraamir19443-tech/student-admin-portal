@@ -5,9 +5,8 @@
   "main": "server/index.js",
   "type": "module",
   "scripts": {
-    "start": "node server/index.js",
+    "start": "node server/db/init.js && node server/index.js",
     "dev": "node --watch server/index.js",
-    "build": "npm run build:db",
     "build:db": "node server/db/init.js"
   },
   "dependencies": {
