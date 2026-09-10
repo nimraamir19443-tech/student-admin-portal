@@ -642,7 +642,26 @@ app.post("/signup", async (req, res) => {
         });
     } catch (error) {
         console.error("Database error:", error.message);
-        res.status(500).json({ message: "Database error" });
+        const students = readStudents();
+        const existingLocal = students.find((student) => student.email === email || student.studentId === studentId);
+        if (existingLocal) {
+            return res.status(400).json({ message: "Email or Student ID already exists." });
+        }
+
+        const localStudent = {
+            id: Date.now(),
+            name,
+            email,
+            studentId,
+            passwordHash: bcrypt.hashSync(password, 10),
+            role: "STUDENT"
+        };
+        students.push(localStudent);
+        writeStudents(students);
+        res.status(201).json({
+            message: "Account created successfully!",
+            student: { id: localStudent.id, name, studentId, email }
+        });
     }
 });
 
