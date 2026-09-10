@@ -1,6 +1,14 @@
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    if (url.pathname === "/config.js") {
+      return new Response(
+        'window.API_BASE_URL = "https://student-admin-portal-production.up.railway.app";',
+        { headers: { "Content-Type": "application/javascript; charset=UTF-8" } }
+      );
+    }
+
     const pageRoutes = {
       "/": "/",
       "/login": "/login",
