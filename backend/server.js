@@ -12,6 +12,8 @@ const portalDataFilePath = path.join(__dirname, "portal-data.json");
 const frontendPath = path.join(__dirname, "..", "frontend");
 
 const allowedOrigins = [
+    "https://studentportal.com",
+    "https://www.studentportal.com",
     "https://student.namraamir788.workers.dev",
     "https://students.namraamir788.workers.dev",
     "http://localhost:3000",
@@ -390,32 +392,37 @@ app.post("/api/students", (req, res) => {
     const selectedClass = className || classValue;
     const selectedRollNo = rollNo || roll_no;
 
-    if (!name || !age || !subject || !selectedClass || !selectedRollNo || !fees) {
+    if (!name || !age || !subject || !selectedClass || !selectedRollNo || fees === undefined || fees === null || fees === "") {
         return res.status(400).json({
             message: "Please fill in all student fields."
         });
     }
 
-    const students = readStudents();
-    const newStudent = {
-        id: Date.now(),
-        name,
-        age: Number(age),
-        subject,
-        className: selectedClass,
-        class: selectedClass,
-        rollNo: Number(selectedRollNo),
-        roll_no: Number(selectedRollNo),
-        fees: Number(fees)
-    };
+    try {
+        const students = readStudents();
+        const newStudent = {
+            id: Date.now(),
+            name: String(name).trim(),
+            age: Number(age),
+            subject: String(subject).trim(),
+            className: String(selectedClass).trim(),
+            class: String(selectedClass).trim(),
+            rollNo: Number(selectedRollNo),
+            roll_no: Number(selectedRollNo),
+            fees: Number(fees)
+        };
 
-    students.push(newStudent);
-    writeStudents(students);
+        students.push(newStudent);
+        writeStudents(students);
 
-    res.status(201).json({
-        message: "Student added successfully",
-        student: newStudent
-    });
+        res.status(201).json({
+            message: "Student added successfully",
+            student: publicStudent(newStudent)
+        });
+    } catch (error) {
+        console.error("Student storage error:", error.message);
+        res.status(500).json({ message: "Unable to save student. Check backend storage permissions." });
+    }
 });
 
 app.delete("/api/students/:id", (req, res) => {
