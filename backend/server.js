@@ -53,7 +53,13 @@ const databaseReady = pool
             email TEXT NOT NULL UNIQUE,
             password TEXT NOT NULL
         )
-    `)
+    `).then(() => pool.query(`
+        ALTER TABLE students
+            ADD COLUMN IF NOT EXISTS name TEXT,
+            ADD COLUMN IF NOT EXISTS student_id TEXT,
+            ADD COLUMN IF NOT EXISTS email TEXT,
+            ADD COLUMN IF NOT EXISTS password TEXT
+    `))
     : Promise.resolve();
 
 function readJson(filePath, fallback) {
