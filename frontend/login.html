@@ -119,7 +119,12 @@
 
           message.textContent = data.message;
           message.className = 'message success';
-          window.location.href = '/';
+          const studentId = data.student?.studentId || data.student?.student_id;
+          if (studentId) {
+            window.location.href = `/student-portal?studentId=${encodeURIComponent(studentId)}`;
+          } else {
+            window.location.href = '/student-portal';
+          }
         } catch (error) {
           message.textContent = error instanceof TypeError
             ? 'The backend is unavailable. Please try again after the server is redeployed.'
