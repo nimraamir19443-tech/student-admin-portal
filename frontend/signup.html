@@ -137,7 +137,7 @@
           }, 1000);
         } catch (error) {
           message.textContent = error instanceof TypeError
-            ? `Unable to reach the signup server at ${API_BASE}/signup. Check that the Railway service is running.`
+            ? `Unable to connect to ${API_BASE}/signup. Please refresh the page and try again.`
             : error.message || 'Signup failed. Please try again.';
           message.className = 'message error';
         }

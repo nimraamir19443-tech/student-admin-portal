@@ -22,7 +22,13 @@ const allowedOrigins = [
 ];
 
 const corsOptions = {
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin) || /^https:\/\/[a-z0-9-]+\.namraamir788\.workers\.dev$/i.test(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error("Origin is not allowed by CORS."));
+    },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     optionsSuccessStatus: 204
