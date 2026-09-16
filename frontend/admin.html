@@ -48,6 +48,15 @@
     .student-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; padding: 14px; background: var(--panel-soft); border: 1px solid var(--line); border-radius: 12px; }
     .student-form input { width: 100%; padding: 11px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel); color: var(--text); }
     .student-form .primary-btn { grid-column: 1 / -1; justify-self: start; }
+    .directory-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .add-student-icon { display: inline-flex; align-items: center; gap: 7px; border: none; background: var(--primary); color: white; border-radius: 10px; padding: 10px 13px; font-weight: 700; cursor: pointer; }
+    .modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(10, 16, 24, 0.58); z-index: 10; }
+    .modal.open { display: flex; }
+    .modal-card { width: min(760px, 100%); max-height: 90vh; overflow-y: auto; background: var(--panel); border-radius: 18px; padding: 22px; box-shadow: var(--shadow); }
+    .modal-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .modal-heading h2 { margin: 0; }
+    .close-modal { border: none; background: transparent; color: var(--text-soft); font-size: 28px; cursor: pointer; }
+    .form-section { grid-column: 1 / -1; color: var(--primary); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-top: 8px; }
     .bulk-import { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; padding: 14px; background: var(--panel-soft); border: 1px solid var(--line); border-radius: 12px; }
     .bulk-import input { max-width: 260px; }
     .secondary-btn { border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 10px; padding: 11px 14px; font-weight: 700; cursor: pointer; text-decoration: none; }
@@ -101,17 +110,10 @@
 
       <section class="panel-row">
         <div class="panel">
-          <h2>Student Directory</h2>
-          <form id="studentForm" class="student-form">
-            <input id="studentName" type="text" placeholder="Full name" required />
-            <input id="studentId" type="text" placeholder="Student ID" required />
-            <input id="studentEmail" type="email" placeholder="Email" required />
-            <input id="studentProgram" type="text" placeholder="Program" required />
-            <input id="studentSemester" type="number" min="1" placeholder="Semester" required />
-            <input id="studentCgpa" type="number" min="0" max="4" step="0.01" placeholder="CGPA" required />
-            <input id="studentAttendance" type="number" min="0" max="100" placeholder="Attendance %" required />
-            <button type="submit" class="primary-btn">Add student</button>
-          </form>
+          <div class="directory-heading">
+            <h2>Student Directory</h2>
+            <button id="openStudentModal" class="add-student-icon" type="button" title="Add a student"><span aria-hidden="true">＋</span> Add student</button>
+          </div>
           <div class="bulk-import">
             <strong>Import multiple students</strong>
             <input id="studentCsv" type="file" accept=".csv,text/csv" />
@@ -167,6 +169,39 @@
     </main>
   </div>
 
+  <div id="studentModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="studentModalTitle">
+    <div class="modal-card">
+      <div class="modal-heading">
+        <h2 id="studentModalTitle">Add student details</h2>
+        <button id="closeStudentModal" class="close-modal" type="button" aria-label="Close">×</button>
+      </div>
+      <form id="studentForm" class="student-form">
+        <div class="form-section">Basic information</div>
+        <input id="studentName" type="text" placeholder="Full name" required />
+        <input id="studentId" type="text" placeholder="Student ID" required />
+        <input id="studentEmail" type="email" placeholder="Email" required />
+        <input id="studentProgram" type="text" placeholder="Program" required />
+        <input id="studentSemester" type="number" min="1" placeholder="Semester" required />
+        <input id="studentCgpa" type="number" min="0" max="4" step="0.01" placeholder="CGPA" required />
+        <input id="studentAttendance" type="number" min="0" max="100" placeholder="Attendance %" required />
+        <div class="form-section">Academic and fee details</div>
+        <input id="studentCareerInterest" type="text" placeholder="Career interest" />
+        <input id="studentInterests" type="text" placeholder="Interests (comma separated)" />
+        <input id="studentPendingAssignments" type="number" min="0" placeholder="Pending assignments" />
+        <input id="studentFeeStatus" type="text" placeholder="Fee status (e.g. Paid)" />
+        <input id="studentFeePaid" type="number" min="0" placeholder="Fees paid" />
+        <input id="studentFeeTotal" type="number" min="0" placeholder="Total fees" />
+        <input id="studentDueDate" type="date" placeholder="Fee due date" />
+        <select id="studentAdmissionStatus">
+          <option value="Approved">Admission approved</option>
+          <option value="Pending">Admission pending</option>
+          <option value="Rejected">Admission rejected</option>
+        </select>
+        <button type="submit" class="primary-btn">Save student</button>
+      </form>
+    </div>
+  </div>
+
   <script src="/config.js"></script>
   <script>
     const API_BASE = window.API_BASE_URL || '';
@@ -180,6 +215,7 @@
     const studentForm = document.getElementById('studentForm');
     const studentCsv = document.getElementById('studentCsv');
     const bulkImportButton = document.getElementById('bulkImportButton');
+    const studentModal = document.getElementById('studentModal');
 
     function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>"']/g, (character) => ({
@@ -332,7 +368,15 @@
           program: document.getElementById('studentProgram').value,
           semester: document.getElementById('studentSemester').value,
           cgpa: document.getElementById('studentCgpa').value,
-          attendance: document.getElementById('studentAttendance').value
+          attendance: document.getElementById('studentAttendance').value,
+          careerInterest: document.getElementById('studentCareerInterest').value,
+          interests: document.getElementById('studentInterests').value,
+          pendingAssignments: document.getElementById('studentPendingAssignments').value,
+          feeStatus: document.getElementById('studentFeeStatus').value,
+          feePaid: document.getElementById('studentFeePaid').value,
+          feeTotal: document.getElementById('studentFeeTotal').value,
+          dueDate: document.getElementById('studentDueDate').value,
+          admissionStatus: document.getElementById('studentAdmissionStatus').value
         })
       });
       const result = await response.json();
@@ -342,7 +386,17 @@
       }
 
       studentForm.reset();
+      studentModal.classList.remove('open');
       await loadDashboard();
+    });
+
+    document.getElementById('openStudentModal').addEventListener('click', () => {
+      studentModal.classList.add('open');
+      document.getElementById('studentName').focus();
+    });
+    document.getElementById('closeStudentModal').addEventListener('click', () => studentModal.classList.remove('open'));
+    studentModal.addEventListener('click', (event) => {
+      if (event.target === studentModal) studentModal.classList.remove('open');
     });
 
     function parseCsv(text) {

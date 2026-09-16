@@ -578,7 +578,15 @@ app.post("/api/admin/students", (req, res) => {
         program,
         semester,
         cgpa,
-        attendance
+        attendance,
+        pendingAssignments,
+        feeStatus,
+        feePaid,
+        feeTotal,
+        dueDate,
+        careerInterest,
+        interests,
+        admissionStatus
     } = req.body || {};
 
     const normalizedName = String(name || "").trim();
@@ -626,13 +634,17 @@ app.post("/api/admin/students", (req, res) => {
         currentSemester: numericSemester,
         cgpa: numericCgpa,
         attendance: numericAttendance,
-        pendingAssignments: 0,
-        feeStatus: "Pending",
+        pendingAssignments: Number.isFinite(Number(pendingAssignments)) ? Number(pendingAssignments) : 0,
+        feeStatus: String(feeStatus || "Pending").trim(),
+        feePaid: Number.isFinite(Number(feePaid)) ? Number(feePaid) : 0,
+        feeTotal: Number.isFinite(Number(feeTotal)) ? Number(feeTotal) : 0,
+        dueDate: String(dueDate || "").trim(),
+        careerInterest: String(careerInterest || "").trim(),
+        interests: String(interests || "").split(",").map((interest) => interest.trim()).filter(Boolean),
         completedCourses: [],
         currentCourses: [],
         enrolledCourses: [],
-        interests: [],
-        admissionStatus: "Approved",
+        admissionStatus: String(admissionStatus || "Approved").trim(),
         role: "STUDENT"
     };
 
