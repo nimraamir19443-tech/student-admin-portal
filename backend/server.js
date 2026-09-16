@@ -570,6 +570,169 @@ app.get("/api/admin-overview", (req, res) => {
     res.json(getAdminOverview());
 });
 
+app.post("/api/admin/students", (req, res) => {
+    const {
+        name,
+        email,
+        studentId,
+        program,
+        semester,
+        cgpa,
+        attendance
+    } = req.body || {};
+
+    const normalizedName = String(name || "").trim();
+    const normalizedEmail = String(email || "").trim();
+    const normalizedStudentId = String(studentId || "").trim();
+    const normalizedProgram = String(program || "").trim();
+    const numericSemester = Number(semester);
+    const numericCgpa = Number(cgpa);
+    const numericAttendance = Number(attendance);
+
+    if (!normalizedName || !normalizedEmail || !normalizedStudentId || !normalizedProgram) {
+        return res.status(400).json({ message: "Name, email, student ID, and program are required." });
+    }
+
+    if (!Number.isInteger(numericSemester) || numericSemester < 1) {
+        return res.status(400).json({ message: "Semester must be a positive whole number." });
+    }
+
+    if (!Number.isFinite(numericCgpa) || numericCgpa < 0 || numericCgpa > 4) {
+        return res.status(400).json({ message: "CGPA must be between 0 and 4." });
+    }
+
+    if (!Number.isFinite(numericAttendance) || numericAttendance < 0 || numericAttendance > 100) {
+        return res.status(400).json({ message: "Attendance must be between 0 and 100." });
+    }
+
+    const data = readPortalData();
+    const students = data.students || [];
+    const duplicate = students.some((student) =>
+        String(student.studentId || "").toLowerCase() === normalizedStudentId.toLowerCase() ||
+        String(student.email || "").toLowerCase() === normalizedEmail.toLowerCase()
+    );
+
+    if (duplicate) {
+        return res.status(409).json({ message: "A student with this ID or email already exists." });
+    }
+
+    const newStudent = {
+        id: Date.now(),
+        name: normalizedName,
+        email: normalizedEmail,
+        studentId: normalizedStudentId,
+        program: normalizedProgram,
+        semester: numericSemester,
+        currentSemester: numericSemester,
+        cgpa: numericCgpa,
+        attendance: numericAttendance,
+        pendingAssignments: 0,
+        feeStatus: "Pending",
+        completedCourses: [],
+        currentCourses: [],
+        enrolledCourses: [],
+        interests: [],
+        admissionStatus: "Approved",
+        role: "STUDENT"
+    };
+
+    data.students = [...students, newStudent];
+    writePortalData(data);
+    res.status(201).json({ message: "Student added successfully.", student: newStudent });
+});
+
+app.post("/api/admin/students/bulk", (req, res) => {
+    const records = Array.isArray(req.body) ? req.body : req.body && req.body.students;
+
+    if (!Array.isArray(records) || records.length === 0) {
+        return res.status(400).json({ message: "Provide at least one student record." });
+    }
+
+    if (records.length > 100) {
+        return res.status(400).json({ message: "You can add a maximum of 100 students at once." });
+    }
+
+    const data = readPortalData();
+    const students = data.students || [];
+    const existingIds = new Set(students.map((student) => String(student.studentId || "").toLowerCase()));
+    const existingEmails = new Set(students.map((student) => String(student.email || "").toLowerCase()));
+    const batchIds = new Set();
+    const batchEmails = new Set();
+    const errors = [];
+    const newStudents = [];
+
+    records.forEach((record, index) => {
+        const row = index + 2;
+        const normalizedName = String(record.name || "").trim();
+        const normalizedEmail = String(record.email || "").trim();
+        const normalizedStudentId = String(record.studentId || "").trim();
+        const normalizedProgram = String(record.program || "").trim();
+        const numericSemester = Number(record.semester);
+        const numericCgpa = Number(record.cgpa);
+        const numericAttendance = Number(record.attendance);
+        const rowErrors = [];
+
+        if (!normalizedName || !normalizedEmail || !normalizedStudentId || !normalizedProgram) {
+            rowErrors.push("name, email, studentId, and program are required");
+        }
+        if (!Number.isInteger(numericSemester) || numericSemester < 1) rowErrors.push("semester must be a positive whole number");
+        if (!Number.isFinite(numericCgpa) || numericCgpa < 0 || numericCgpa > 4) rowErrors.push("cgpa must be between 0 and 4");
+        if (!Number.isFinite(numericAttendance) || numericAttendance < 0 || numericAttendance > 100) rowErrors.push("attendance must be between 0 and 100");
+        if (existingIds.has(normalizedStudentId.toLowerCase()) || batchIds.has(normalizedStudentId.toLowerCase())) rowErrors.push("student ID already exists");
+        if (existingEmails.has(normalizedEmail.toLowerCase()) || batchEmails.has(normalizedEmail.toLowerCase())) rowErrors.push("email already exists");
+
+        if (rowErrors.length) {
+            errors.push(`Row ${row}: ${rowErrors.join("; ")}.`);
+            return;
+        }
+
+        batchIds.add(normalizedStudentId.toLowerCase());
+        batchEmails.add(normalizedEmail.toLowerCase());
+        newStudents.push({
+            id: Date.now() + index,
+            name: normalizedName,
+            email: normalizedEmail,
+            studentId: normalizedStudentId,
+            program: normalizedProgram,
+            semester: numericSemester,
+            currentSemester: numericSemester,
+            cgpa: numericCgpa,
+            attendance: numericAttendance,
+            pendingAssignments: 0,
+            feeStatus: "Pending",
+            completedCourses: [],
+            currentCourses: [],
+            enrolledCourses: [],
+            interests: [],
+            admissionStatus: "Approved",
+            role: "STUDENT"
+        });
+    });
+
+    if (errors.length) {
+        return res.status(400).json({ message: "No students were added. Fix the following rows:", errors });
+    }
+
+    data.students = [...students, ...newStudents];
+    writePortalData(data);
+    res.status(201).json({ message: `${newStudents.length} students added successfully.`, students: newStudents });
+});
+
+app.delete("/api/admin/students/:id", (req, res) => {
+    const studentId = Number(req.params.id);
+    const data = readPortalData();
+    const students = data.students || [];
+    const remainingStudents = students.filter((student) => student.id !== studentId);
+
+    if (remainingStudents.length === students.length) {
+        return res.status(404).json({ message: "Student not found." });
+    }
+
+    data.students = remainingStudents;
+    writePortalData(data);
+    res.json({ message: "Student deleted successfully." });
+});
+
 app.get("/api/announcements", (req, res) => {
     res.json(readPortalData().announcements || []);
 });

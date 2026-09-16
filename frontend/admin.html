@@ -45,9 +45,18 @@
     .panel h2 { margin: 0 0 12px; font-size: 1.15rem; }
     .search-row { display: flex; gap: 12px; margin-bottom: 14px; }
     .search-row input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-soft); color: var(--text); }
+    .student-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; padding: 14px; background: var(--panel-soft); border: 1px solid var(--line); border-radius: 12px; }
+    .student-form input { width: 100%; padding: 11px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel); color: var(--text); }
+    .student-form .primary-btn { grid-column: 1 / -1; justify-self: start; }
+    .bulk-import { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; padding: 14px; background: var(--panel-soft); border: 1px solid var(--line); border-radius: 12px; }
+    .bulk-import input { max-width: 260px; }
+    .secondary-btn { border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 10px; padding: 11px 14px; font-weight: 700; cursor: pointer; text-decoration: none; }
+    .help-text { color: var(--text-soft); font-size: 12px; flex-basis: 100%; }
     .table { width: 100%; border-collapse: collapse; }
     .table th, .table td { padding: 12px 10px; text-align: left; border-bottom: 1px solid var(--line); }
     .table th { color: var(--text-soft); font-size: 12px; text-transform: uppercase; letter-spacing: 1.1px; }
+    .table-wrap { overflow-x: auto; }
+    .delete-btn { border: 1px solid rgba(239,93,93,0.25); background: rgba(239,93,93,0.1); color: var(--danger); border-radius: 8px; padding: 7px 10px; cursor: pointer; font-weight: 700; }
     .mini-list { display: grid; gap: 10px; }
     .mini-item { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--panel-soft); }
     .mini-item strong { display: block; margin-bottom: 4px; }
@@ -93,20 +102,42 @@
       <section class="panel-row">
         <div class="panel">
           <h2>Student Directory</h2>
+          <form id="studentForm" class="student-form">
+            <input id="studentName" type="text" placeholder="Full name" required />
+            <input id="studentId" type="text" placeholder="Student ID" required />
+            <input id="studentEmail" type="email" placeholder="Email" required />
+            <input id="studentProgram" type="text" placeholder="Program" required />
+            <input id="studentSemester" type="number" min="1" placeholder="Semester" required />
+            <input id="studentCgpa" type="number" min="0" max="4" step="0.01" placeholder="CGPA" required />
+            <input id="studentAttendance" type="number" min="0" max="100" placeholder="Attendance %" required />
+            <button type="submit" class="primary-btn">Add student</button>
+          </form>
+          <div class="bulk-import">
+            <strong>Import multiple students</strong>
+            <input id="studentCsv" type="file" accept=".csv,text/csv" />
+            <button id="bulkImportButton" type="button" class="primary-btn">Import CSV</button>
+            <a class="secondary-btn" href="data:text/csv;charset=utf-8,name,studentId,email,program,semester,cgpa,attendance%0ANimra,NIMRA-001,nimra%40student.com,BS%20Computer%20Science,1,3.0,90" download="students-template.csv">Download template</a>
+            <div class="help-text">CSV columns: name, studentId, email, program, semester, cgpa, attendance. Imports are all-or-nothing if any row is invalid.</div>
+          </div>
           <div class="search-row">
             <input id="studentSearch" type="text" placeholder="Search students" />
           </div>
+          <div class="table-wrap">
           <table class="table">
             <thead>
               <tr>
                 <th>Name</th>
+                <th>Student ID</th>
+                <th>Email</th>
                 <th>Program</th>
                 <th>Semester</th>
                 <th>CGPA</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody id="studentTableBody"></tbody>
           </table>
+          </div>
         </div>
 
         <div class="panel">
@@ -146,6 +177,19 @@
     const announcementList = document.getElementById('announcementList');
     const ruleList = document.getElementById('ruleList');
     const studentSearch = document.getElementById('studentSearch');
+    const studentForm = document.getElementById('studentForm');
+    const studentCsv = document.getElementById('studentCsv');
+    const bulkImportButton = document.getElementById('bulkImportButton');
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      }[character]));
+    }
 
     function renderStats(data) {
       const stats = [
@@ -171,12 +215,15 @@
 
       studentTableBody.innerHTML = rows.length ? rows.map((student) => `
         <tr>
-          <td>${student.name}</td>
-          <td>${student.program || '—'}</td>
+          <td>${escapeHtml(student.name)}</td>
+          <td>${escapeHtml(student.studentId || '—')}</td>
+          <td>${escapeHtml(student.email || '—')}</td>
+          <td>${escapeHtml(student.program || '—')}</td>
           <td>${student.currentSemester || student.semester || '—'}</td>
           <td>${Number(student.cgpa || 0).toFixed(2)}</td>
+          <td><button class="delete-btn" type="button" data-student-id="${student.id}">Delete</button></td>
         </tr>
-      `).join('') : '<tr><td colspan="4"><div class="empty">No students match your filters.</div></td></tr>';
+      `).join('') : '<tr><td colspan="7"><div class="empty">No students match your filters.</div></td></tr>';
     }
 
     function renderAdmissions(data) {
@@ -253,8 +300,91 @@
       await loadDashboard();
     });
 
-    studentSearch.addEventListener('input', () => {
-      loadDashboard();
+    studentSearch.addEventListener('input', () => loadDashboard());
+
+    studentTableBody.addEventListener('click', async (event) => {
+      const button = event.target.closest('[data-student-id]');
+      if (!button) return;
+
+      if (!confirm('Delete this student and their portal record?')) return;
+
+      const response = await fetch(`${API_BASE}/api/admin/students/${encodeURIComponent(button.dataset.studentId)}`, {
+        method: 'DELETE'
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        alert(result.message || 'Unable to delete student.');
+        return;
+      }
+
+      await loadDashboard();
+    });
+
+    studentForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const response = await fetch(`${API_BASE}/api/admin/students`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: document.getElementById('studentName').value,
+          studentId: document.getElementById('studentId').value,
+          email: document.getElementById('studentEmail').value,
+          program: document.getElementById('studentProgram').value,
+          semester: document.getElementById('studentSemester').value,
+          cgpa: document.getElementById('studentCgpa').value,
+          attendance: document.getElementById('studentAttendance').value
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        alert(result.message || 'Unable to add student.');
+        return;
+      }
+
+      studentForm.reset();
+      await loadDashboard();
+    });
+
+    function parseCsv(text) {
+      const lines = text.trim().split(/\r?\n/).filter(Boolean);
+      if (lines.length < 2) throw new Error('CSV must include a header and at least one student row.');
+      const headers = lines[0].split(',').map((header) => header.trim());
+      const requiredHeaders = ['name', 'studentId', 'email', 'program', 'semester', 'cgpa', 'attendance'];
+      if (requiredHeaders.some((header) => !headers.includes(header))) {
+        throw new Error(`CSV must contain these columns: ${requiredHeaders.join(', ')}.`);
+      }
+      return lines.slice(1).map((line) => {
+        const values = line.split(',').map((value) => value.trim().replace(/^"|"$/g, ''));
+        return headers.reduce((record, header, index) => {
+          record[header] = values[index] || '';
+          return record;
+        }, {});
+      });
+    }
+
+    bulkImportButton.addEventListener('click', async () => {
+      if (!studentCsv.files.length) {
+        alert('Choose a CSV file first.');
+        return;
+      }
+      try {
+        const records = parseCsv(await studentCsv.files[0].text());
+        const response = await fetch(`${API_BASE}/api/admin/students/bulk`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ students: records })
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          alert([result.message, ...(result.errors || [])].join('\n'));
+          return;
+        }
+        alert(result.message);
+        studentCsv.value = '';
+        await loadDashboard();
+      } catch (error) {
+        alert(error.message || 'Unable to import CSV.');
+      }
     });
 
     loadDashboard();

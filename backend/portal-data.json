@@ -6,7 +6,15 @@
       "duration": "4 years",
       "semesterCount": 8,
       "degreeRequirements": 132,
-      "requiredCourses": ["CS101", "CS102", "CS201", "CS204", "CS301", "CS303", "CS401"]
+      "requiredCourses": [
+        "CS101",
+        "CS102",
+        "CS201",
+        "CS204",
+        "CS301",
+        "CS303",
+        "CS401"
+      ]
     },
     {
       "id": "bs-it",
@@ -14,7 +22,14 @@
       "duration": "4 years",
       "semesterCount": 8,
       "degreeRequirements": 130,
-      "requiredCourses": ["IT101", "IT102", "IT201", "IT204", "IT301", "IT303"]
+      "requiredCourses": [
+        "IT101",
+        "IT102",
+        "IT201",
+        "IT204",
+        "IT301",
+        "IT303"
+      ]
     }
   ],
   "students": [
@@ -31,10 +46,30 @@
       "pendingAssignments": 4,
       "feeStatus": "Paid",
       "careerInterest": "Software Engineering",
-      "interests": ["Web Development", "Artificial Intelligence", "Cyber Security"],
-      "completedCourses": ["CS101", "CS102", "MTH101", "ENG101"],
-      "currentCourses": ["CS201", "CS204", "DB101", "MTH201"],
-      "enrolledCourses": ["CS201", "CS204", "DB101", "MTH201", "WEB101"],
+      "interests": [
+        "Web Development",
+        "Artificial Intelligence",
+        "Cyber Security"
+      ],
+      "completedCourses": [
+        "CS101",
+        "CS102",
+        "MTH101",
+        "ENG101"
+      ],
+      "currentCourses": [
+        "CS201",
+        "CS204",
+        "DB101",
+        "MTH201"
+      ],
+      "enrolledCourses": [
+        "CS201",
+        "CS204",
+        "DB101",
+        "MTH201",
+        "WEB101"
+      ],
       "feePaid": 170000,
       "feeTotal": 220000,
       "dueDate": "2026-09-15",
@@ -54,10 +89,28 @@
       "pendingAssignments": 2,
       "feeStatus": "Paid",
       "careerInterest": "Data Science",
-      "interests": ["Artificial Intelligence", "Machine Learning", "Statistics"],
-      "completedCourses": ["CS101", "CS102", "CS201", "CS204", "MTH201"],
-      "currentCourses": ["CS301", "CS303", "ML101"],
-      "enrolledCourses": ["CS301", "CS303", "ML101"],
+      "interests": [
+        "Artificial Intelligence",
+        "Machine Learning",
+        "Statistics"
+      ],
+      "completedCourses": [
+        "CS101",
+        "CS102",
+        "CS201",
+        "CS204",
+        "MTH201"
+      ],
+      "currentCourses": [
+        "CS301",
+        "CS303",
+        "ML101"
+      ],
+      "enrolledCourses": [
+        "CS301",
+        "CS303",
+        "ML101"
+      ],
       "feePaid": 210000,
       "feeTotal": 240000,
       "dueDate": "2026-09-25",
@@ -77,10 +130,24 @@
       "pendingAssignments": 3,
       "feeStatus": "Partial",
       "careerInterest": "Cyber Security",
-      "interests": ["IT", "Networking", "Cyber Security"],
-      "completedCourses": ["IT101"],
-      "currentCourses": ["IT102", "IT201", "ENG201"],
-      "enrolledCourses": ["IT102", "IT201", "ENG201"],
+      "interests": [
+        "IT",
+        "Networking",
+        "Cyber Security"
+      ],
+      "completedCourses": [
+        "IT101"
+      ],
+      "currentCourses": [
+        "IT102",
+        "IT201",
+        "ENG201"
+      ],
+      "enrolledCourses": [
+        "IT102",
+        "IT201",
+        "ENG201"
+      ],
       "feePaid": 120000,
       "feeTotal": 185000,
       "dueDate": "2026-09-18",
@@ -100,10 +167,26 @@
       "pendingAssignments": 1,
       "feeStatus": "Paid",
       "careerInterest": "Product Management",
-      "interests": ["Business IT", "Database", "Web Development"],
-      "completedCourses": ["IT101", "IT102", "IT201"],
-      "currentCourses": ["IT204", "IT301", "WEB201"],
-      "enrolledCourses": ["IT204", "IT301", "WEB201"],
+      "interests": [
+        "Business IT",
+        "Database",
+        "Web Development"
+      ],
+      "completedCourses": [
+        "IT101",
+        "IT102",
+        "IT201"
+      ],
+      "currentCourses": [
+        "IT204",
+        "IT301",
+        "WEB201"
+      ],
+      "enrolledCourses": [
+        "IT204",
+        "IT301",
+        "WEB201"
+      ],
       "feePaid": 160000,
       "feeTotal": 200000,
       "dueDate": "2026-09-20",
@@ -123,13 +206,46 @@
       "pendingAssignments": 5,
       "feeStatus": "Pending",
       "careerInterest": "Software Engineering",
-      "interests": ["Programming", "Java", "Databases"],
-      "completedCourses": ["CS101"],
-      "currentCourses": ["CS102", "PY101", "MTH101"],
-      "enrolledCourses": ["CS102", "PY101", "MTH101"],
+      "interests": [
+        "Programming",
+        "Java",
+        "Databases"
+      ],
+      "completedCourses": [
+        "CS101"
+      ],
+      "currentCourses": [
+        "CS102",
+        "PY101",
+        "MTH101"
+      ],
+      "enrolledCourses": [
+        "CS102",
+        "PY101",
+        "MTH101"
+      ],
       "feePaid": 70000,
       "feeTotal": 175000,
       "dueDate": "2026-09-30",
+      "admissionStatus": "Approved",
+      "role": "STUDENT"
+    },
+    {
+      "id": 1789400363396,
+      "name": "Nimra",
+      "email": "nimra@student.com",
+      "studentId": "NIMRA-001",
+      "program": "BS Computer Science",
+      "semester": 1,
+      "currentSemester": 1,
+      "cgpa": 3,
+      "attendance": 90,
+      "pendingAssignments": 0,
+      "feeStatus": "Pending",
+      "completedCourses": [],
+      "currentCourses": [],
+      "enrolledCourses": [],
+      "interests": [],
       "admissionStatus": "Approved",
       "role": "STUDENT"
     }
@@ -147,12 +263,24 @@
       "duration": "12 weeks",
       "description": "Learn core programming logic, variables, control flow, and problem solving using Python.",
       "prerequisites": [],
-      "whatYouWillLearn": ["Problem solving", "Python syntax", "Functions", "Debugging"],
+      "whatYouWillLearn": [
+        "Problem solving",
+        "Python syntax",
+        "Functions",
+        "Debugging"
+      ],
       "schedule": "Mon & Wed · 10:00 AM",
       "enrollmentStatus": "Open",
       "category": "Core",
-      "tags": ["Programming", "Python", "Software Engineering"],
-      "unlocks": ["CS201", "CS204"]
+      "tags": [
+        "Programming",
+        "Python",
+        "Software Engineering"
+      ],
+      "unlocks": [
+        "CS201",
+        "CS204"
+      ]
     },
     {
       "id": "CS102",
@@ -165,13 +293,26 @@
       "instructor": "Dr. Bilal Ahmed",
       "duration": "12 weeks",
       "description": "Understand object design patterns, classes, inheritance, and reusable software architecture.",
-      "prerequisites": ["CS101"],
-      "whatYouWillLearn": ["Classes and objects", "Inheritance", "Polymorphism", "Encapsulation"],
+      "prerequisites": [
+        "CS101"
+      ],
+      "whatYouWillLearn": [
+        "Classes and objects",
+        "Inheritance",
+        "Polymorphism",
+        "Encapsulation"
+      ],
       "schedule": "Tue & Thu · 09:30 AM",
       "enrollmentStatus": "Open",
       "category": "Core",
-      "tags": ["OOP", "Java", "Software Design"],
-      "unlocks": ["CS301"]
+      "tags": [
+        "OOP",
+        "Java",
+        "Software Design"
+      ],
+      "unlocks": [
+        "CS301"
+      ]
     },
     {
       "id": "CS201",
@@ -184,13 +325,27 @@
       "instructor": "Dr. Sara Ali",
       "duration": "14 weeks",
       "description": "Study trees, graphs, stacks, queues, and efficient algorithm design for real-world applications.",
-      "prerequisites": ["CS101"],
-      "whatYouWillLearn": ["Arrays", "Linked lists", "Trees", "Graph traversal"],
+      "prerequisites": [
+        "CS101"
+      ],
+      "whatYouWillLearn": [
+        "Arrays",
+        "Linked lists",
+        "Trees",
+        "Graph traversal"
+      ],
       "schedule": "Mon, Wed, Fri · 11:00 AM",
       "enrollmentStatus": "Open",
       "category": "Core",
-      "tags": ["Algorithms", "Data Structures", "Programming"],
-      "unlocks": ["CS303", "CS301"]
+      "tags": [
+        "Algorithms",
+        "Data Structures",
+        "Programming"
+      ],
+      "unlocks": [
+        "CS303",
+        "CS301"
+      ]
     },
     {
       "id": "CS204",
@@ -203,13 +358,26 @@
       "instructor": "Prof. Mehmood Raza",
       "duration": "12 weeks",
       "description": "Explore relational database design, SQL, normalization, and transactional systems.",
-      "prerequisites": ["CS101"],
-      "whatYouWillLearn": ["SQL", "ER modeling", "Normalization", "Transactions"],
+      "prerequisites": [
+        "CS101"
+      ],
+      "whatYouWillLearn": [
+        "SQL",
+        "ER modeling",
+        "Normalization",
+        "Transactions"
+      ],
       "schedule": "Tue & Thu · 12:30 PM",
       "enrollmentStatus": "Open",
       "category": "Core",
-      "tags": ["Database", "SQL", "Data Management"],
-      "unlocks": ["CS401"]
+      "tags": [
+        "Database",
+        "SQL",
+        "Data Management"
+      ],
+      "unlocks": [
+        "CS401"
+      ]
     },
     {
       "id": "DB101",
@@ -222,13 +390,25 @@
       "instructor": "Prof. Mehmood Raza",
       "duration": "12 weeks",
       "description": "Relational modeling, SQL querying, schema design, and database administration fundamentals.",
-      "prerequisites": ["CS101"],
-      "whatYouWillLearn": ["Entity relationship modeling", "SQL queries", "Indexes", "Database design"],
+      "prerequisites": [
+        "CS101"
+      ],
+      "whatYouWillLearn": [
+        "Entity relationship modeling",
+        "SQL queries",
+        "Indexes",
+        "Database design"
+      ],
       "schedule": "Wed & Fri · 02:00 PM",
       "enrollmentStatus": "Open",
       "category": "Core",
-      "tags": ["Database", "SQL"],
-      "unlocks": ["CS401"]
+      "tags": [
+        "Database",
+        "SQL"
+      ],
+      "unlocks": [
+        "CS401"
+      ]
     },
     {
       "id": "WEB101",
@@ -241,13 +421,26 @@
       "instructor": "Ms. Hira Imran",
       "duration": "12 weeks",
       "description": "Build interactive web applications with modern front-end and back-end development patterns.",
-      "prerequisites": ["CS101"],
-      "whatYouWillLearn": ["HTML/CSS", "JavaScript", "Frontend design", "API integration"],
+      "prerequisites": [
+        "CS101"
+      ],
+      "whatYouWillLearn": [
+        "HTML/CSS",
+        "JavaScript",
+        "Frontend design",
+        "API integration"
+      ],
       "schedule": "Tue & Thu · 03:00 PM",
       "enrollmentStatus": "Open",
       "category": "Elective",
-      "tags": ["Web", "Frontend", "Full Stack"],
-      "unlocks": ["CS401"]
+      "tags": [
+        "Web",
+        "Frontend",
+        "Full Stack"
+      ],
+      "unlocks": [
+        "CS401"
+      ]
     },
     {
       "id": "CS301",
@@ -260,13 +453,26 @@
       "instructor": "Dr. Farah Nadeem",
       "duration": "12 weeks",
       "description": "Apply engineering methods, requirement analysis, architecture, and project management to software systems.",
-      "prerequisites": ["CS102", "CS201"],
-      "whatYouWillLearn": ["Requirements", "Agile", "Design", "Testing"],
+      "prerequisites": [
+        "CS102",
+        "CS201"
+      ],
+      "whatYouWillLearn": [
+        "Requirements",
+        "Agile",
+        "Design",
+        "Testing"
+      ],
       "schedule": "Mon & Wed · 01:00 PM",
       "enrollmentStatus": "Open",
       "category": "Core",
-      "tags": ["Software Engineering", "Project Management"],
-      "unlocks": ["CS401"]
+      "tags": [
+        "Software Engineering",
+        "Project Management"
+      ],
+      "unlocks": [
+        "CS401"
+      ]
     },
     {
       "id": "CS303",
@@ -279,13 +485,27 @@
       "instructor": "Dr. Mariam Shah",
       "duration": "12 weeks",
       "description": "Cover search, knowledge representation, machine learning foundations, and AI ethics.",
-      "prerequisites": ["CS201", "MTH201"],
-      "whatYouWillLearn": ["Search algorithms", "Neural foundations", "Knowledge graphs", "AI workflows"],
+      "prerequisites": [
+        "CS201",
+        "MTH201"
+      ],
+      "whatYouWillLearn": [
+        "Search algorithms",
+        "Neural foundations",
+        "Knowledge graphs",
+        "AI workflows"
+      ],
       "schedule": "Tue & Thu · 10:00 AM",
       "enrollmentStatus": "Open",
       "category": "Elective",
-      "tags": ["AI", "Machine Learning", "Data Science"],
-      "unlocks": ["ML101"]
+      "tags": [
+        "AI",
+        "Machine Learning",
+        "Data Science"
+      ],
+      "unlocks": [
+        "ML101"
+      ]
     },
     {
       "id": "ML101",
@@ -298,13 +518,27 @@
       "instructor": "Dr. Umar Farooq",
       "duration": "12 weeks",
       "description": "Study supervised learning, classification, clustering, and predictive model evaluation.",
-      "prerequisites": ["PY101", "MTH201"],
-      "whatYouWillLearn": ["Regression", "Classification", "Evaluation metrics", "Model tuning"],
+      "prerequisites": [
+        "PY101",
+        "MTH201"
+      ],
+      "whatYouWillLearn": [
+        "Regression",
+        "Classification",
+        "Evaluation metrics",
+        "Model tuning"
+      ],
       "schedule": "Tue & Thu · 01:30 PM",
       "enrollmentStatus": "Open",
       "category": "Elective",
-      "tags": ["Machine Learning", "AI", "Python"],
-      "unlocks": ["AI301"]
+      "tags": [
+        "Machine Learning",
+        "AI",
+        "Python"
+      ],
+      "unlocks": [
+        "AI301"
+      ]
     },
     {
       "id": "PY101",
@@ -317,13 +551,26 @@
       "instructor": "Ms. Sana Noor",
       "duration": "10 weeks",
       "description": "Use Python data libraries to analyze and visualize modern data-driven solutions.",
-      "prerequisites": ["CS101"],
-      "whatYouWillLearn": ["Pandas", "NumPy", "Visualization", "Data analysis"],
+      "prerequisites": [
+        "CS101"
+      ],
+      "whatYouWillLearn": [
+        "Pandas",
+        "NumPy",
+        "Visualization",
+        "Data analysis"
+      ],
       "schedule": "Mon & Wed · 03:00 PM",
       "enrollmentStatus": "Open",
       "category": "Elective",
-      "tags": ["Python", "Data Science", "Statistics"],
-      "unlocks": ["ML101"]
+      "tags": [
+        "Python",
+        "Data Science",
+        "Statistics"
+      ],
+      "unlocks": [
+        "ML101"
+      ]
     },
     {
       "id": "MTH101",
@@ -337,12 +584,22 @@
       "duration": "12 weeks",
       "description": "Build your mathematical foundation in limits, derivatives, and applications for science and engineering.",
       "prerequisites": [],
-      "whatYouWillLearn": ["Functions", "Derivatives", "Optimization", "Applications"],
+      "whatYouWillLearn": [
+        "Functions",
+        "Derivatives",
+        "Optimization",
+        "Applications"
+      ],
       "schedule": "Mon & Wed · 08:30 AM",
       "enrollmentStatus": "Completed",
       "category": "Core",
-      "tags": ["Mathematics", "Calculus"],
-      "unlocks": ["MTH201"]
+      "tags": [
+        "Mathematics",
+        "Calculus"
+      ],
+      "unlocks": [
+        "MTH201"
+      ]
     },
     {
       "id": "MTH201",
@@ -355,13 +612,26 @@
       "instructor": "Dr. Ayesha Qureshi",
       "duration": "12 weeks",
       "description": "Learn statistical reasoning, probability distributions, and data interpretation methods.",
-      "prerequisites": ["MTH101"],
-      "whatYouWillLearn": ["Probability", "Sampling", "Hypothesis testing", "Regression"],
+      "prerequisites": [
+        "MTH101"
+      ],
+      "whatYouWillLearn": [
+        "Probability",
+        "Sampling",
+        "Hypothesis testing",
+        "Regression"
+      ],
       "schedule": "Tue & Thu · 11:30 AM",
       "enrollmentStatus": "Open",
       "category": "Core",
-      "tags": ["Statistics", "Probability", "Data Science"],
-      "unlocks": ["ML101"]
+      "tags": [
+        "Statistics",
+        "Probability",
+        "Data Science"
+      ],
+      "unlocks": [
+        "ML101"
+      ]
     },
     {
       "id": "IT101",
@@ -375,41 +645,141 @@
       "duration": "10 weeks",
       "description": "Introduction to IT infrastructure, networking, and digital systems in enterprise environments.",
       "prerequisites": [],
-      "whatYouWillLearn": ["IT systems", "Networking", "Digital environments", "Business IT"],
+      "whatYouWillLearn": [
+        "IT systems",
+        "Networking",
+        "Digital environments",
+        "Business IT"
+      ],
       "schedule": "Tue & Thu · 09:00 AM",
       "enrollmentStatus": "Open",
       "category": "Core",
-      "tags": ["IT", "Infrastructure"],
-      "unlocks": ["IT201"]
+      "tags": [
+        "IT",
+        "Infrastructure"
+      ],
+      "unlocks": [
+        "IT201"
+      ]
     }
   ],
   "announcements": [
-    { "id": 1, "title": "Midterm Examination Schedule Released", "message": "The faculty has published the exam timetable for Semester 3 students.", "date": "2026-08-18" },
-    { "id": 2, "title": "Career Fair 2026", "message": "Top technology companies will be visiting campus next week for recruitment.", "date": "2026-08-15" },
-    { "id": 3, "title": "Registration Deadline", "message": "Course registration closes on Friday at 5:00 PM.", "date": "2026-08-12" }
+    {
+      "id": 1,
+      "title": "Midterm Examination Schedule Released",
+      "message": "The faculty has published the exam timetable for Semester 3 students.",
+      "date": "2026-08-18"
+    },
+    {
+      "id": 2,
+      "title": "Career Fair 2026",
+      "message": "Top technology companies will be visiting campus next week for recruitment.",
+      "date": "2026-08-15"
+    },
+    {
+      "id": 3,
+      "title": "Registration Deadline",
+      "message": "Course registration closes on Friday at 5:00 PM.",
+      "date": "2026-08-12"
+    }
   ],
   "admissions": [
-    { "id": 1, "studentName": "Ali Hassan", "program": "BS Computer Science", "status": "Approved", "date": "2026-08-12" },
-    { "id": 2, "studentName": "Nurah Khan", "program": "BS Information Technology", "status": "Under Review", "date": "2026-08-16" },
-    { "id": 3, "studentName": "Ayesha Malik", "program": "BS Computer Science", "status": "Approved", "date": "2026-08-19" },
-    { "id": 4, "studentName": "Hamza Khan", "program": "BS Information Technology", "status": "Approved", "date": "2026-08-21" },
-    { "id": 5, "studentName": "Sana Rahman", "program": "BS Information Technology", "status": "Under Review", "date": "2026-08-24" }
+    {
+      "id": 1,
+      "studentName": "Ali Hassan",
+      "program": "BS Computer Science",
+      "status": "Approved",
+      "date": "2026-08-12"
+    },
+    {
+      "id": 2,
+      "studentName": "Nurah Khan",
+      "program": "BS Information Technology",
+      "status": "Under Review",
+      "date": "2026-08-16"
+    },
+    {
+      "id": 3,
+      "studentName": "Ayesha Malik",
+      "program": "BS Computer Science",
+      "status": "Approved",
+      "date": "2026-08-19"
+    },
+    {
+      "id": 4,
+      "studentName": "Hamza Khan",
+      "program": "BS Information Technology",
+      "status": "Approved",
+      "date": "2026-08-21"
+    },
+    {
+      "id": 5,
+      "studentName": "Sana Rahman",
+      "program": "BS Information Technology",
+      "status": "Under Review",
+      "date": "2026-08-24"
+    }
   ],
   "notifications": [
-    { "id": 1, "title": "New course available", "message": "Web Development has been added to the elective catalog." },
-    { "id": 2, "title": "Fee reminder", "message": "Fee installment is due on 2026-09-15." },
-    { "id": 3, "title": "Assignment due", "message": "Database Systems assignment is due tomorrow." }
+    {
+      "id": 1,
+      "title": "New course available",
+      "message": "Web Development has been added to the elective catalog."
+    },
+    {
+      "id": 2,
+      "title": "Fee reminder",
+      "message": "Fee installment is due on 2026-09-15."
+    },
+    {
+      "id": 3,
+      "title": "Assignment due",
+      "message": "Database Systems assignment is due tomorrow."
+    }
   ],
   "courseRecommendationRules": [
-    { "source": "Programming Fundamentals", "target": "Data Structures" },
-    { "source": "Data Structures", "target": "Algorithms" },
-    { "source": "Python", "target": "Machine Learning" },
-    { "source": "Statistics", "target": "Data Science" }
+    {
+      "source": "Programming Fundamentals",
+      "target": "Data Structures"
+    },
+    {
+      "source": "Data Structures",
+      "target": "Algorithms"
+    },
+    {
+      "source": "Python",
+      "target": "Machine Learning"
+    },
+    {
+      "source": "Statistics",
+      "target": "Data Science"
+    }
   ],
   "results": [
-    { "courseCode": "CS101", "subject": "Programming Fundamentals", "marks": 88, "grade": "A", "credits": 3, "semester": "Spring 2026" },
-    { "courseCode": "CS201", "subject": "Data Structures", "marks": 91, "grade": "A+", "credits": 4, "semester": "Spring 2026" },
-    { "courseCode": "MTH201", "subject": "Statistics and Probability", "marks": 84, "grade": "A-", "credits": 3, "semester": "Spring 2026" }
+    {
+      "courseCode": "CS101",
+      "subject": "Programming Fundamentals",
+      "marks": 88,
+      "grade": "A",
+      "credits": 3,
+      "semester": "Spring 2026"
+    },
+    {
+      "courseCode": "CS201",
+      "subject": "Data Structures",
+      "marks": 91,
+      "grade": "A+",
+      "credits": 4,
+      "semester": "Spring 2026"
+    },
+    {
+      "courseCode": "MTH201",
+      "subject": "Statistics and Probability",
+      "marks": 84,
+      "grade": "A-",
+      "credits": 3,
+      "semester": "Spring 2026"
+    }
   ],
   "fees": {
     "total": 220000,
@@ -417,8 +787,16 @@
     "remaining": 50000,
     "dueDate": "2026-09-15",
     "history": [
-      { "date": "2026-08-01", "amount": 80000, "label": "Admission fee" },
-      { "date": "2026-08-15", "amount": 90000, "label": "Semester fee" }
+      {
+        "date": "2026-08-01",
+        "amount": 80000,
+        "label": "Admission fee"
+      },
+      {
+        "date": "2026-08-15",
+        "amount": 90000,
+        "label": "Semester fee"
+      }
     ]
   }
 }
