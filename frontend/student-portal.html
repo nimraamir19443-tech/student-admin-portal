@@ -31,6 +31,8 @@
     .nav { display: flex; flex-direction: column; gap: 8px; }
     .nav a { text-decoration: none; color: #d9e5ff; padding: 12px 14px; border-radius: 10px; font-weight: 600; display: flex; align-items: center; gap: 10px; transition: all 0.2s ease; }
     .nav a:hover, .nav a.active { background: rgba(255,255,255,0.08); transform: translateX(2px); }
+    .logout-btn { width: 100%; margin-top: 18px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; background: transparent; color: #d9e5ff; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+    .logout-btn:hover { background: rgba(239,93,93,0.16); border-color: rgba(239,93,93,0.4); color: #fff; }
     .main { padding: 28px; }
     .topbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 26px; }
     .searchbar { flex: 1; max-width: 600px; position: relative; }
@@ -102,6 +104,7 @@
         <a href="/student-portal?studentId=STU-001">Fees</a>
         <a href="/profile?studentId=STU-001">Profile</a>
       </nav>
+      <button type="button" class="logout-btn" id="logoutBtn" aria-label="Log out">↪ Log out</button>
     </aside>
 
     <main class="main">
@@ -200,6 +203,12 @@
     const attendanceContainer = document.getElementById('attendanceList');
     const progressOverview = document.getElementById('progressOverview');
     const searchInput = document.getElementById('globalSearch');
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('student');
+      sessionStorage.clear();
+      window.location.href = '/login';
+    });
 
     function showToast(message, type = 'success') {
       toast.textContent = message;
