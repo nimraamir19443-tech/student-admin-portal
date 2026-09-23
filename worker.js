@@ -5,7 +5,12 @@ export default {
     if (url.pathname === "/config.js") {
       return new Response(
         'window.API_BASE_URL = "https://student-admin-portal-production.up.railway.app";',
-        { headers: { "Content-Type": "application/javascript; charset=UTF-8" } }
+        {
+          headers: {
+            "Content-Type": "application/javascript; charset=UTF-8",
+            "Cache-Control": "no-store"
+          }
+        }
       );
     }
 
