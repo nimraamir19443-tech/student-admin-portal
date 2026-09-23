@@ -38,7 +38,10 @@
   </main>
   <script src="/config.js"></script>
   <script>
-    const API_BASE = window.API_BASE_URL || '';
+    const configuredApiBase = window.API_BASE_URL || '';
+    const API_BASE = configuredApiBase.includes('student-production-5870.up.railway.app')
+      ? 'https://student-admin-portal-production.up.railway.app'
+      : configuredApiBase;
     const params = new URLSearchParams(location.search);
     const studentId = params.get('studentId') || params.get('id') || 'STU-001';
     const profile = document.getElementById('profile');

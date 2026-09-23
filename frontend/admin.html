@@ -204,7 +204,10 @@
 
   <script src="/config.js"></script>
   <script>
-    const API_BASE = window.API_BASE_URL || '';
+    const configuredApiBase = window.API_BASE_URL || '';
+    const API_BASE = configuredApiBase.includes('student-production-5870.up.railway.app')
+      ? 'https://student-admin-portal-production.up.railway.app'
+      : configuredApiBase;
 
     const statsGrid = document.getElementById('statsGrid');
     const studentTableBody = document.getElementById('studentTableBody');
