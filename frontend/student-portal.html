@@ -192,10 +192,11 @@
 
   <script src="/config.js"></script>
   <script>
+    const isLocalDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const configuredApiBase = window.API_BASE_URL || '';
     const API_BASE = configuredApiBase.includes('student-production-5870.up.railway.app')
       ? 'https://student-admin-portal-production.up.railway.app'
-      : configuredApiBase;
+      : configuredApiBase || (isLocalDevelopment ? '' : 'https://student-admin-portal-production.up.railway.app');
     const studentId = new URLSearchParams(window.location.search).get('studentId') || 'STU-001';
     const toast = document.getElementById('toast');
     const modal = document.getElementById('courseModal');

@@ -38,10 +38,11 @@
   </main>
   <script src="/config.js"></script>
   <script>
+    const isLocalDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const configuredApiBase = window.API_BASE_URL || '';
     const API_BASE = configuredApiBase.includes('student-production-5870.up.railway.app')
       ? 'https://student-admin-portal-production.up.railway.app'
-      : configuredApiBase;
+      : configuredApiBase || (isLocalDevelopment ? '' : 'https://student-admin-portal-production.up.railway.app');
     const params = new URLSearchParams(location.search);
     const studentId = params.get('studentId') || params.get('id') || 'STU-001';
     const profile = document.getElementById('profile');
