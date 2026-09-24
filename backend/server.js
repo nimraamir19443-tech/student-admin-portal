@@ -23,7 +23,10 @@ const allowedOrigins = [
 
 const corsOptions = {
     origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin) || /^https:\/\/[a-z0-9-]+\.namraamir788\.workers\.dev$/i.test(origin)) {
+        const isLocalDevOrigin = origin && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
+        const isFileOrigin = origin === "null";
+
+        if (!origin || isFileOrigin || isLocalDevOrigin || allowedOrigins.includes(origin) || /^https:\/\/[a-z0-9-]+\.namraamir788\.workers\.dev$/i.test(origin)) {
             return callback(null, true);
         }
 
@@ -36,6 +39,12 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
+app.use((err, req, res, next) => {
+    if (err && err.message === "Origin is not allowed by CORS.") {
+        return res.status(403).json({ message: "This origin is not permitted to access the API." });
+    }
+    return next(err);
+});
 app.use(express.json());
 app.use(express.static(frontendPath));
 
@@ -918,6 +927,6 @@ app.get("/api/database-status", async (req, res) => {
 
 const port = process.env.PORT || 3000;
 
-app.listen(port, () => {
+app.listen(port, "0.0.0.0", () => {
     console.log(`CampusDesk backend running on port ${port}`);
 });
