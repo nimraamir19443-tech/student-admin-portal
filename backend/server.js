@@ -16,6 +16,7 @@ const allowedOrigins = [
     "https://www.studentportal.com",
     "https://student.namraamir788.workers.dev",
     "https://students.namraamir788.workers.dev",
+    "https://portal122.nimramir19443.workers.dev",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     ...(process.env.FRONTEND_URL || "").split(",").map((origin) => origin.trim()).filter(Boolean)
@@ -26,7 +27,7 @@ const corsOptions = {
         const isLocalDevOrigin = origin && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
         const isFileOrigin = origin === "null";
 
-        if (!origin || isFileOrigin || isLocalDevOrigin || allowedOrigins.includes(origin) || /^https:\/\/[a-z0-9-]+\.namraamir788\.workers\.dev$/i.test(origin)) {
+        if (!origin || isFileOrigin || isLocalDevOrigin || allowedOrigins.includes(origin) || /^https:\/\/[a-z0-9-]+\.namraamir788\.workers\.dev$/i.test(origin) || /^https:\/\/[a-z0-9-]+\.nimramir19443\.workers\.dev$/i.test(origin)) {
             return callback(null, true);
         }
 
