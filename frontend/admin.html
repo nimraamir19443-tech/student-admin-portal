@@ -31,6 +31,8 @@
     .nav { display: flex; flex-direction: column; gap: 8px; }
     .nav a { text-decoration: none; color: #dfe9ff; padding: 12px 14px; border-radius: 10px; font-weight: 600; display: block; }
     .nav a:hover, .nav a.active { background: rgba(255,255,255,0.08); }
+    .logout-btn { width: 100%; margin-top: 18px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; background: transparent; color: #dfe9ff; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+    .logout-btn:hover { background: rgba(239,93,93,0.16); border-color: rgba(239,93,93,0.4); color: #fff; }
     .content { padding: 28px; }
     .topline { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
     .eyebrow { color: var(--primary); font-size: 11px; font-weight: 800; letter-spacing: 2.4px; text-transform: uppercase; }
@@ -93,6 +95,7 @@
         <a href="/admin">Admissions</a>
         <a href="/profile?studentId=STU-001">Fees</a>
       </nav>
+      <button type="button" class="logout-btn" id="logoutBtn" aria-label="Log out">↪ Log out</button>
     </aside>
 
     <main class="content">
@@ -134,6 +137,7 @@
                 <th>Program</th>
                 <th>Semester</th>
                 <th>CGPA</th>
+                <th>Details</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -221,6 +225,12 @@
     const bulkImportButton = document.getElementById('bulkImportButton');
     const studentModal = document.getElementById('studentModal');
 
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('student');
+      sessionStorage.clear();
+      window.location.href = '/login';
+    });
+
     function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>"']/g, (character) => ({
         '&': '&amp;',
@@ -261,9 +271,10 @@
           <td>${escapeHtml(student.program || '—')}</td>
           <td>${student.currentSemester || student.semester || '—'}</td>
           <td>${Number(student.cgpa || 0).toFixed(2)}</td>
+          <td><a href="/profile?studentId=${encodeURIComponent(student.studentId || student.id)}">View details</a></td>
           <td><button class="delete-btn" type="button" data-student-id="${student.id}">Delete</button></td>
         </tr>
-      `).join('') : '<tr><td colspan="7"><div class="empty">No students match your filters.</div></td></tr>';
+      `).join('') : '<tr><td colspan="8"><div class="empty">No students match your filters.</div></td></tr>';
     }
 
     function renderAdmissions(data) {

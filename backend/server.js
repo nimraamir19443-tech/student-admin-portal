@@ -105,6 +105,42 @@ function publicStudent(student) {
     return safeStudent;
 }
 
+function ensurePortalStudentRecord({ name, studentId, email }) {
+    const data = readPortalData();
+    data.students = data.students || [];
+    const exists = data.students.some((student) =>
+        student && (student.studentId === studentId || student.email === email)
+    );
+
+    if (exists) {
+        return;
+    }
+
+    data.students.push({
+        id: Date.now(),
+        name,
+        email,
+        studentId,
+        program: "BS Computer Science",
+        semester: 1,
+        currentSemester: 1,
+        cgpa: 0,
+        attendance: 0,
+        pendingAssignments: 0,
+        feeStatus: "Pending",
+        feePaid: 0,
+        feeTotal: 0,
+        dueDate: "",
+        completedCourses: [],
+        currentCourses: [],
+        enrolledCourses: [],
+        interests: [],
+        admissionStatus: "Approved",
+        role: "STUDENT"
+    });
+    writePortalData(data);
+}
+
 function readClasses() {
     return readJson(classesFilePath, []);
 }
@@ -805,6 +841,7 @@ app.post("/signup", async (req, res) => {
         };
         students.push(newStudent);
         writeStudents(students);
+        ensurePortalStudentRecord({ name, studentId, email });
         return res.status(201).json({ message: "Account created successfully!", student: { id: newStudent.id, name, studentId, email } });
     }
 
@@ -827,6 +864,7 @@ app.post("/signup", async (req, res) => {
             [name, studentId, email, passwordHash]
         );
 
+        ensurePortalStudentRecord({ name, studentId, email });
         res.status(201).json({
             message: "Account created successfully!",
             student: result.rows[0]
@@ -849,6 +887,7 @@ app.post("/signup", async (req, res) => {
         };
         students.push(localStudent);
         writeStudents(students);
+        ensurePortalStudentRecord({ name, studentId, email });
         res.status(201).json({
             message: "Account created successfully!",
             student: { id: localStudent.id, name, studentId, email }
