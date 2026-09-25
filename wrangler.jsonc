@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "students",
+  "name": "portal122",
   "main": "worker.js",
   "compatibility_date": "2026-09-02",
   "assets": {
