@@ -26,9 +26,15 @@ export default {
     if (pageRoutes[url.pathname]) {
       const assetUrl = new URL(request.url);
       assetUrl.pathname = pageRoutes[url.pathname];
-      return env.ASSETS.fetch(new Request(assetUrl, request));
+      const assetResponse = await env.ASSETS.fetch(new Request(assetUrl, request));
+      const response = new Response(assetResponse.body, assetResponse);
+      response.headers.set("Cache-Control", "no-store");
+      return response;
     }
 
-    return env.ASSETS.fetch(request);
+    const fallbackResponse = await env.ASSETS.fetch(request);
+    const response = new Response(fallbackResponse.body, fallbackResponse);
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   }
 };
