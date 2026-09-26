@@ -17,7 +17,7 @@
     .avatar { width:78px; height:78px; display:grid; place-items:center; border-radius:50%; background:var(--blue); color:#fff; font-size:30px; font-weight:bold; }
     .eyebrow { color:var(--blue); font:700 12px Arial,sans-serif; letter-spacing:2px; text-transform:uppercase; }
     h1 { margin:7px 0 4px; font-size:46px; } .sub { margin:0; color:var(--muted); font:15px Arial,sans-serif; }
-    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:34px 0 20px; }
+    .stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; margin:34px 0 20px; }
     .stat,.panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:22px; }
     .stat small { display:block; color:var(--muted); font:12px Arial,sans-serif; text-transform:uppercase; letter-spacing:1px; }
     .stat strong { display:block; margin-top:10px; font-size:28px; }
@@ -26,8 +26,14 @@
     .detail:last-child { border-bottom:0; } .detail span { color:var(--muted); } .detail strong { text-align:right; }
     .fee-box { background:var(--sky); border-radius:10px; padding:20px; } .fee-box strong { display:block; margin-top:6px; font-size:32px; color:var(--blue); } .paid { color:var(--green); font:700 14px Arial,sans-serif; margin-top:18px; }
     .actions { display:flex; gap:10px; margin-top:20px; } button { padding:11px 15px; border:0; border-radius:7px; background:var(--blue); color:#fff; cursor:pointer; font:bold 14px Arial,sans-serif; } button:hover { filter:brightness(.9); }
+    .enrollment-panel { margin-top:20px; }
+    .course-list { display:grid; }
+    .course-row { display:grid; grid-template-columns:1.2fr .8fr 1fr .6fr; gap:12px; padding:14px 0; border-bottom:1px solid var(--line); font:14px Arial,sans-serif; }
+    .course-row:last-child { border-bottom:0; }
+    .course-heading { color:var(--muted); font-size:12px; font-weight:bold; text-transform:uppercase; }
+    .no-courses { color:var(--muted); font:15px Arial,sans-serif; }
     .error { color:#b91c1c; font:16px Arial,sans-serif; }
-    @media(max-width:700px) { .top{align-items:flex-start}.top nav{display:flex;flex-direction:column;gap:8px}.top nav a{margin:0}.hero{align-items:flex-start}h1{font-size:36px}.stats,.layout{grid-template-columns:1fr}.detail{font-size:14px} }
+    @media(max-width:700px) { .top{align-items:flex-start}.top nav{display:flex;flex-direction:column;gap:8px}.top nav a{margin:0}.hero{align-items:flex-start}h1{font-size:36px}.stats,.layout{grid-template-columns:1fr}.detail{font-size:14px}.course-row{grid-template-columns:1fr 1fr}.course-heading{display:none} }
   </style>
 </head>
 <body>
@@ -46,21 +52,29 @@
     const params = new URLSearchParams(location.search);
     const studentId = params.get('studentId') || params.get('id') || 'STU-001';
     const profile = document.getElementById('profile');
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+    }[character]));
 
     fetch(API_BASE + '/api/student-dashboard/' + encodeURIComponent(studentId))
       .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
       .then(data => {
         const student = data.student || {};
         const program = student.program || 'Not assigned';
-        const className = student.currentSemester ? 'Semester ' + student.currentSemester : (student.semester || 'Not assigned');
         const rollNo = student.studentId || 'Not assigned';
-        const feeTotal = Number((data.fees && data.fees.total) || student.feeTotal || 0);
+        const courses = data.myCourses || [];
+        const fees = data.fees || {};
         const initials = (student.name || 'ST').split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase();
         document.title = (student.name || 'Student') + ' | Student Dashboard';
+        const courseRows = courses.length ? `
+          <div class="course-row course-heading"><span>Course</span><span>Instructor</span><span>Schedule</span><span>Credits</span></div>
+          ${courses.map(course => `<div class="course-row"><strong>${escapeHtml(course.code)} · ${escapeHtml(course.name)}</strong><span>${escapeHtml(course.instructor || '—')}</span><span>${escapeHtml(course.schedule || '—')}</span><span>${escapeHtml(course.credits ?? '—')}</span></div>`).join('')}
+        ` : '<p class="no-courses">No courses are enrolled for this student yet.</p>';
         profile.innerHTML = `
           <div class="hero"><div class="avatar">${initials}</div><div><div class="eyebrow">Individual student dashboard</div><h1>${student.name || 'Student Profile'}</h1><p class="sub">Personal academic record and fee overview</p></div></div>
-          <section class="stats"><div class="stat"><small>Program</small><strong>${program}</strong></div><div class="stat"><small>Student ID</small><strong>${rollNo}</strong></div><div class="stat"><small>CGPA</small><strong>${Number(student.cgpa || 0).toFixed(2)}</strong></div></section>
-          <div class="layout"><section class="panel"><h2>Academic information</h2><div class="detail"><span>Student name</span><strong>${student.name || '—'}</strong></div><div class="detail"><span>Program</span><strong>${program}</strong></div><div class="detail"><span>Semester</span><strong>${student.currentSemester || student.semester || '—'}</strong></div><div class="detail"><span>Attendance</span><strong>${student.attendance || 0}%</strong></div></section><section class="panel"><h2>Fee summary</h2><div class="fee-box"><span class="sub">Current fee amount</span><strong>PKR ${feeTotal.toLocaleString()}</strong><div class="paid">Record active</div></div><div class="actions"><button onclick="window.print()">Print profile</button><button onclick="location.href='/admin'">Admin view</button></div></section></div>`;
+          <section class="stats"><div class="stat"><small>Program</small><strong>${escapeHtml(program)}</strong></div><div class="stat"><small>Student ID</small><strong>${escapeHtml(rollNo)}</strong></div><div class="stat"><small>Enrolled courses</small><strong>${courses.length}</strong></div><div class="stat"><small>CGPA</small><strong>${Number(student.cgpa || 0).toFixed(2)}</strong></div></section>
+          <div class="layout"><section class="panel"><h2>Student and academic information</h2><div class="detail"><span>Student name</span><strong>${escapeHtml(student.name || '—')}</strong></div><div class="detail"><span>Email</span><strong>${escapeHtml(student.email || '—')}</strong></div><div class="detail"><span>Program</span><strong>${escapeHtml(program)}</strong></div><div class="detail"><span>Semester</span><strong>${escapeHtml(student.currentSemester || student.semester || '—')}</strong></div><div class="detail"><span>Attendance</span><strong>${escapeHtml(student.attendance ?? 0)}%</strong></div><div class="detail"><span>Pending assignments</span><strong>${escapeHtml(student.pendingAssignments ?? 0)}</strong></div><div class="detail"><span>Career interest</span><strong>${escapeHtml(student.careerInterest || '—')}</strong></div><div class="detail"><span>Interests</span><strong>${escapeHtml((student.interests || []).join(', ') || '—')}</strong></div><div class="detail"><span>Admission status</span><strong>${escapeHtml(student.admissionStatus || '—')}</strong></div></section><section class="panel"><h2>Fee summary</h2><div class="fee-box"><span class="sub">Total fee</span><strong>PKR ${Number(fees.total || 0).toLocaleString()}</strong><div class="detail"><span>Paid</span><strong>PKR ${Number(fees.paid || 0).toLocaleString()}</strong></div><div class="detail"><span>Remaining</span><strong>PKR ${Number(fees.remaining || 0).toLocaleString()}</strong></div><div class="detail"><span>Due date</span><strong>${escapeHtml(fees.dueDate || '—')}</strong></div></div><div class="actions"><button onclick="window.print()">Print profile</button><button onclick="location.href='/admin'">Admin view</button></div></section></div>
+          <section class="panel enrollment-panel"><h2>Enrolled courses</h2><div class="course-list">${courseRows}</div></section>`;
       })
       .catch(() => { profile.innerHTML = '<section class="panel"><h1>Student not found</h1><p class="error">This record may have been deleted or the profile link is invalid.</p></section>'; });
   </script>

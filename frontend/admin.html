@@ -137,6 +137,7 @@
                 <th>Program</th>
                 <th>Semester</th>
                 <th>CGPA</th>
+                <th>Enrolled</th>
                 <th>Details</th>
                 <th>Action</th>
               </tr>
@@ -258,12 +259,21 @@
     }
 
     function renderStudents(data) {
+      const coursesById = new Map((data.courses || []).flatMap((course) => [
+        [course.id, course],
+        [course.code, course]
+      ]));
       const rows = (data.students || []).filter((student) => {
         const query = studentSearch.value.trim().toLowerCase();
-        return !query || `${student.name} ${student.program || ''}`.toLowerCase().includes(query);
+        const enrolledIds = [...new Set([...(student.enrolledCourses || []), ...(student.currentCourses || [])])];
+        const enrolledNames = enrolledIds.map((id) => coursesById.get(id)?.name || id).join(' ');
+        return !query || `${student.name} ${student.studentId || ''} ${student.email || ''} ${student.program || ''} ${enrolledNames}`.toLowerCase().includes(query);
       });
 
-      studentTableBody.innerHTML = rows.length ? rows.map((student) => `
+      studentTableBody.innerHTML = rows.length ? rows.map((student) => {
+        const enrolledIds = [...new Set([...(student.enrolledCourses || []), ...(student.currentCourses || [])])];
+        const enrolledNames = enrolledIds.map((id) => coursesById.get(id)?.name || id).join(', ');
+        return `
         <tr>
           <td>${escapeHtml(student.name)}</td>
           <td>${escapeHtml(student.studentId || '—')}</td>
@@ -271,10 +281,12 @@
           <td>${escapeHtml(student.program || '—')}</td>
           <td>${student.currentSemester || student.semester || '—'}</td>
           <td>${Number(student.cgpa || 0).toFixed(2)}</td>
+          <td title="${escapeHtml(enrolledNames)}">${enrolledIds.length} course${enrolledIds.length === 1 ? '' : 's'}</td>
           <td><a href="/profile?studentId=${encodeURIComponent(student.studentId || student.id)}">View details</a></td>
           <td><button class="delete-btn" type="button" data-student-id="${student.id}">Delete</button></td>
         </tr>
-      `).join('') : '<tr><td colspan="8"><div class="empty">No students match your filters.</div></td></tr>';
+        `;
+      }).join('') : '<tr><td colspan="9"><div class="empty">No students match your filters.</div></td></tr>';
     }
 
     function renderAdmissions(data) {

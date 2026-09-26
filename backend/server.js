@@ -265,17 +265,36 @@ function getStudentDashboard(studentId) {
         explanation: course.reasons.join(" • ")
     }));
 
-    const myCourses = (data.courses || []).filter((course) => {
-        const courseId = course.id;
-        return (student.enrolledCourses || []).includes(courseId) || (student.currentCourses || []).includes(courseId);
-    });
+    const courseCatalog = data.courses || [];
+    const coursesById = new Map(courseCatalog.flatMap((course) => [
+        [String(course.id), course],
+        [String(course.code), course]
+    ]));
+    const enrolledCourseIds = [...new Set([
+        ...(student.enrolledCourses || []),
+        ...(student.currentCourses || [])
+    ])];
+    const myCourses = enrolledCourseIds.map((courseId) => coursesById.get(String(courseId)) || ({
+        id: String(courseId),
+        code: String(courseId),
+        name: String(courseId),
+        instructor: "Not listed",
+        credits: null,
+        semester: null,
+        schedule: "Contact administration for course details",
+        enrollmentStatus: "Enrolled",
+        courseDetailsAvailable: false
+    }));
 
-    const attendance = data.courses
-        .filter((course) => (student.enrolledCourses || []).includes(course.id) || (student.currentCourses || []).includes(course.id))
-        .map((course) => ({
-            course: course.name,
-            percentage: course.semester % 2 === 0 ? 95 : 92
-        }));
+    const attendance = myCourses.map((course) => ({
+        course: course.name,
+        percentage: course.courseDetailsAvailable === false
+            ? Number(student.attendance || 0)
+            : course.semester % 2 === 0 ? 95 : 92
+    }));
+    const studentFees = student.fees || {};
+    const feeTotal = Number(student.feeTotal ?? studentFees.total ?? data.fees?.total ?? 0);
+    const feePaid = Number(student.feePaid ?? studentFees.paid ?? data.fees?.paid ?? 0);
 
     return {
         student,
@@ -295,7 +314,13 @@ function getStudentDashboard(studentId) {
         announcements: data.announcements || [],
         notifications: data.notifications || [],
         results: data.results || [],
-        fees: data.fees || { total: 0, paid: 0, remaining: 0, dueDate: "", history: [] },
+        fees: {
+            total: feeTotal,
+            paid: feePaid,
+            remaining: Number(student.feeRemaining ?? studentFees.remaining ?? Math.max(feeTotal - feePaid, 0)),
+            dueDate: student.dueDate || studentFees.dueDate || data.fees?.dueDate || "",
+            history: student.feeHistory || studentFees.history || []
+        },
         courses: data.courses || [],
         myCourses,
         attendance,
