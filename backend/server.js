@@ -23,16 +23,7 @@ const allowedOrigins = [
 ];
 
 const corsOptions = {
-    origin: (origin, callback) => {
-        const isLocalDevOrigin = origin && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
-        const isFileOrigin = origin === "null";
-
-        if (!origin || isFileOrigin || isLocalDevOrigin || allowedOrigins.includes(origin) || /^https:\/\/[a-z0-9-]+\.namraamir788\.workers\.dev$/i.test(origin) || /^https:\/\/[a-z0-9-]+\.nimramir19443\.workers\.dev$/i.test(origin)) {
-            return callback(null, true);
-        }
-
-        return callback(new Error("Origin is not allowed by CORS."));
-    },
+    origin: "*",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     optionsSuccessStatus: 204
