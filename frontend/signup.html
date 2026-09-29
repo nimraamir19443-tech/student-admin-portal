@@ -3,112 +3,68 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sign Up</title>
-    <style>
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        background: linear-gradient(135deg, #dcfce7, #f8fafc);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 100vh;
-      }
-      .signup-box {
-        width: 100%;
-        max-width: 480px;
-        background: white;
-        padding: 30px;
-        border-radius: 16px;
-        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
-      }
-      h2 {
-        margin-top: 0;
-        text-align: center;
-        color: #0f172a;
-      }
-      form {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
-      label {
-        font-weight: 600;
-        color: #1e293b;
-      }
-      input {
-        padding: 12px 14px;
-        border-radius: 10px;
-        border: 1px solid #cbd5e1;
-        font-size: 1rem;
-      }
-      button {
-        padding: 12px 16px;
-        border: none;
-        border-radius: 10px;
-        background: #16a34a;
-        color: white;
-        font-weight: bold;
-        cursor: pointer;
-      }
-      .message {
-        margin-top: 16px;
-        font-weight: 600;
-      }
-      .success { color: #15803d; }
-      .error { color: #b91c1c; }
-      .footer-text {
-        margin-top: 16px;
-        text-align: center;
-        color: #475569;
-      }
-      .footer-text a {
-        color: #16a34a;
-        text-decoration: none;
-      }
-    </style>
+    <title>CampusDesk | Create account</title>
+    <link rel="stylesheet" href="/auth.css" />
   </head>
   <body>
-    <div class="signup-box">
-      <h2>Sign Up</h2>
-      <form id="signupForm">
-        <div>
-          <label for="name">Name</label>
-          <input type="text" id="name" placeholder="Enter your name" required />
+    <main class="page signup-page">
+      <header class="site-header">
+        <a class="brand" href="/">Campus<span>Desk</span></a>
+        <nav class="site-nav" aria-label="Account navigation">
+          <a href="/login">Login</a>
+          <a href="/signup" aria-current="page">Sign up</a>
+        </nav>
+      </header>
+
+      <section class="auth-layout">
+        <div class="auth-copy">
+          <div class="eyebrow">Student management, made simple</div>
+          <h1>Create your CampusDesk account.</h1>
+          <p>Set up your student access and keep your academic information close at hand.</p>
         </div>
 
-        <div>
-          <label for="studentId">Student ID</label>
-          <input type="text" id="studentId" placeholder="Enter student ID" required />
-        </div>
+        <section class="form-panel" aria-labelledby="signupTitle">
+          <div class="form-kicker">Student access</div>
+          <h2 id="signupTitle">Sign up</h2>
+          <p class="form-intro">Enter your student details to create an account.</p>
+          <form id="signupForm">
+            <div class="field">
+              <label for="name">Full name</label>
+              <input type="text" id="name" placeholder="Your name" autocomplete="name" required />
+            </div>
 
-        <div>
-          <label for="email">Email</label>
-          <input type="email" id="email" placeholder="Enter your email" required />
-        </div>
+            <div class="field">
+              <label for="studentId">Student ID</label>
+              <input type="text" id="studentId" placeholder="Your student ID" autocomplete="off" required />
+            </div>
 
-        <div>
-          <label for="password">Password</label>
-          <input type="password" id="password" placeholder="Enter your password" required />
-        </div>
+            <div class="field">
+              <label for="email">Email address</label>
+              <input type="email" id="email" placeholder="you@campus.edu" autocomplete="email" required />
+            </div>
 
-        <button type="submit">Create Account</button>
-      </form>
+            <div class="field">
+              <label for="password">Password</label>
+              <input type="password" id="password" placeholder="At least 10 characters" minlength="10" maxlength="128" autocomplete="new-password" required />
+            </div>
 
-      <div id="message" class="message"></div>
+            <button type="submit">Create account</button>
+          </form>
 
-      <div class="footer-text">
-        Already have an account? <a href="/login">Login</a>
-      </div>
-    </div>
+          <div id="message" class="message" role="status" aria-live="polite"></div>
+
+          <div class="footer-text">Already have an account? <a href="/login">Sign in</a></div>
+        </section>
+      </section>
+    </main>
 
     <script src="/config.js"></script>
     <script>
+      const isLocalDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       const configuredApiBase = window.API_BASE_URL || '';
       const API_BASE = configuredApiBase.includes('student-production-5870.up.railway.app')
         ? 'https://student-admin-portal-production.up.railway.app'
-        : configuredApiBase || 'https://student-admin-portal-production.up.railway.app';
+        : configuredApiBase || (isLocalDevelopment ? '' : 'https://student-admin-portal-production.up.railway.app');
       const form = document.getElementById('signupForm');
       const message = document.getElementById('message');
 

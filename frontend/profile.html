@@ -51,12 +51,17 @@
       : configuredApiBase || (isLocalDevelopment ? '' : 'https://student-admin-portal-production.up.railway.app');
     const params = new URLSearchParams(location.search);
     const studentId = params.get('studentId') || params.get('id') || 'STU-001';
+    const accessToken = sessionStorage.getItem('accessToken');
     const profile = document.getElementById('profile');
     const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
     }[character]));
 
-    fetch(API_BASE + '/api/student-dashboard/' + encodeURIComponent(studentId))
+    if (!accessToken) window.location.replace('/login');
+
+    fetch(API_BASE + '/api/student-dashboard/' + encodeURIComponent(studentId), {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    })
       .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
       .then(data => {
         const student = data.student || {};
@@ -76,7 +81,7 @@
           <div class="layout"><section class="panel"><h2>Student and academic information</h2><div class="detail"><span>Student name</span><strong>${escapeHtml(student.name || '—')}</strong></div><div class="detail"><span>Email</span><strong>${escapeHtml(student.email || '—')}</strong></div><div class="detail"><span>Program</span><strong>${escapeHtml(program)}</strong></div><div class="detail"><span>Semester</span><strong>${escapeHtml(student.currentSemester || student.semester || '—')}</strong></div><div class="detail"><span>Attendance</span><strong>${escapeHtml(student.attendance ?? 0)}%</strong></div><div class="detail"><span>Pending assignments</span><strong>${escapeHtml(student.pendingAssignments ?? 0)}</strong></div><div class="detail"><span>Career interest</span><strong>${escapeHtml(student.careerInterest || '—')}</strong></div><div class="detail"><span>Interests</span><strong>${escapeHtml((student.interests || []).join(', ') || '—')}</strong></div><div class="detail"><span>Admission status</span><strong>${escapeHtml(student.admissionStatus || '—')}</strong></div></section><section class="panel"><h2>Fee summary</h2><div class="fee-box"><span class="sub">Total fee</span><strong>PKR ${Number(fees.total || 0).toLocaleString()}</strong><div class="detail"><span>Paid</span><strong>PKR ${Number(fees.paid || 0).toLocaleString()}</strong></div><div class="detail"><span>Remaining</span><strong>PKR ${Number(fees.remaining || 0).toLocaleString()}</strong></div><div class="detail"><span>Due date</span><strong>${escapeHtml(fees.dueDate || '—')}</strong></div></div><div class="actions"><button onclick="window.print()">Print profile</button><button onclick="location.href='/admin'">Admin view</button></div></section></div>
           <section class="panel enrollment-panel"><h2>Enrolled courses</h2><div class="course-list">${courseRows}</div></section>`;
       })
-      .catch(() => { profile.innerHTML = '<section class="panel"><h1>Student not found</h1><p class="error">This record may have been deleted or the profile link is invalid.</p></section>'; });
+      .catch(() => { profile.innerHTML = '<section class="panel"><h1>Student not found</h1><p class="error">This record may have been deleted, the profile link may be invalid, or your session may have expired.</p></section>'; });
   </script>
 </body>
 </html>

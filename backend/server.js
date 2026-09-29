@@ -2,13 +2,14 @@ const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const { Pool } = require("pg");
 
 const app = express();
-const dataFilePath = path.join(__dirname, "students.json");
-const classesFilePath = path.join(__dirname, "classes.json");
-const portalDataFilePath = path.join(__dirname, "portal-data.json");
+const dataFilePath = process.env.STUDENTS_FILE_PATH || path.join(__dirname, "students.json");
+const classesFilePath = process.env.CLASSES_FILE_PATH || path.join(__dirname, "classes.json");
+const portalDataFilePath = process.env.PORTAL_DATA_FILE_PATH || path.join(__dirname, "portal-data.json");
 const frontendPath = path.join(__dirname, "..", "frontend");
 
 const allowedOrigins = [
@@ -64,8 +65,11 @@ const databaseReady = pool
         ALTER TABLE students
             ADD COLUMN IF NOT EXISTS name TEXT,
             ADD COLUMN IF NOT EXISTS student_id TEXT,
+            ADD COLUMN IF NOT EXISTS roll_number TEXT,
             ADD COLUMN IF NOT EXISTS email TEXT,
-            ADD COLUMN IF NOT EXISTS password TEXT
+            ADD COLUMN IF NOT EXISTS password TEXT,
+            ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'STUDENT',
+            ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE
     `))
     : Promise.resolve();
 
@@ -92,8 +96,148 @@ function writeStudents(students) {
 }
 
 function publicStudent(student) {
+    
     const { password, passwordHash, ...safeStudent } = student || {};
     return safeStudent;
+}
+
+const configuredTokenSecret = process.env.AUTH_TOKEN_SECRET || "";
+const configuredAdminEmail = String(process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+const configuredAdminPasswordHash = process.env.ADMIN_PASSWORD_HASH || "";
+if (configuredTokenSecret && Buffer.byteLength(configuredTokenSecret) < 32) {
+    throw new Error("AUTH_TOKEN_SECRET must contain at least 32 bytes.");
+}
+if (process.env.NODE_ENV === "production" && (
+    !configuredTokenSecret ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(configuredAdminEmail) ||
+    !/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(configuredAdminPasswordHash)
+)) {
+    throw new Error("Production requires AUTH_TOKEN_SECRET, a valid ADMIN_EMAIL, and a bcrypt ADMIN_PASSWORD_HASH.");
+}
+const tokenSecret = configuredTokenSecret || crypto.randomBytes(32).toString("hex");
+
+function issueToken(user) {
+    const payload = Buffer.from(JSON.stringify({
+        ...user,
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 8 * 60 * 60
+    })).toString("base64url");
+    const signature = crypto.createHmac("sha256", tokenSecret).update(payload).digest("base64url");
+    return `${payload}.${signature}`;
+}
+
+function verifyToken(token) {
+    const [payload, signature] = String(token || "").split(".");
+    if (!payload || !signature) return null;
+
+    const expected = crypto.createHmac("sha256", tokenSecret).update(payload).digest();
+    let supplied;
+    try {
+        supplied = Buffer.from(signature, "base64url");
+    } catch (error) {
+        return null;
+    }
+
+    if (supplied.length !== expected.length || !crypto.timingSafeEqual(supplied, expected)) return null;
+
+    try {
+        const user = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+        return user.exp > Math.floor(Date.now() / 1000) ? user : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function requireAuth(req, res, next) {
+    const authorization = String(req.headers.authorization || "");
+    const user = authorization.startsWith("Bearer ") ? verifyToken(authorization.slice(7)) : null;
+    if (!user) return res.status(401).json({ message: "Please log in to continue." });
+    if (user.mustChangePassword && req.path !== "/change-password") {
+        return res.status(403).json({ message: "Change your temporary password before continuing.", requiresPasswordChange: true });
+    }
+    req.auth = user;
+    next();
+}
+
+function requireRole(role) {
+    return (req, res, next) => {
+        if (!req.auth || req.auth.role !== role) {
+            return res.status(403).json({ message: "You do not have permission to perform this action." });
+        }
+        next();
+    };
+}
+
+function canAccessStudent(req, res, next) {
+    if (req.auth.role === "ADMIN") return next();
+    const requested = String(req.params.studentId || "").trim();
+    if (requested && [String(req.auth.studentId || ""), String(req.auth.id || "")].includes(requested)) return next();
+    return res.status(403).json({ message: "You can only access your own student record." });
+}
+
+function generateStudentEmail(name, reservedEmails) {
+    const domain = String(process.env.STUDENT_EMAIL_DOMAIN || "students.campusdesk.local").toLowerCase();
+    const namePart = String(name).normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+        .replace(/[^a-z0-9]+/g, ".").replace(/^\.|\.$/g, "").slice(0, 32) || "student";
+    let email;
+    do {
+        email = `${namePart}.${crypto.randomBytes(3).toString("hex")}@${domain}`;
+    } while (reservedEmails.has(email.toLowerCase()));
+    reservedEmails.add(email.toLowerCase());
+    return email;
+}
+
+function generateTemporaryPassword() {
+    return crypto.randomBytes(12).toString("base64url");
+}
+
+function nextPortalStudentId(students) {
+    const numericIds = students.map((student) => Number(student.id)).filter(Number.isSafeInteger);
+    let id = Math.max(Date.now(), ...numericIds.map((value) => value + 1));
+    while (students.some((student) => String(student.id) === String(id))) id += 1;
+    return id;
+}
+
+async function saveStudentAccounts(accounts) {
+    if (pool) {
+        await databaseReady;
+        const client = await pool.connect();
+        try {
+            await client.query("BEGIN");
+            for (const account of accounts) {
+                await client.query(
+                    `INSERT INTO students (name, student_id, roll_number, email, password, role, must_change_password)
+                    VALUES ($1, $2, $2, $3, $4, 'STUDENT', TRUE)`,
+                    [account.name, account.studentId, account.email, account.passwordHash]
+                );
+            }
+            await client.query("COMMIT");
+            return;
+        } catch (error) {
+            await client.query("ROLLBACK");
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    const students = readStudents();
+    const existingEmails = new Set(students.map((student) => String(student.email || "").toLowerCase()));
+    const existingIds = new Set(students.map((student) => String(student.studentId || "").toLowerCase()));
+    if (accounts.some((account) => existingEmails.has(account.email.toLowerCase()) || existingIds.has(account.studentId.toLowerCase()))) {
+        const error = new Error("An account with this email or student ID already exists.");
+        error.code = "23505";
+        throw error;
+    }
+    writeStudents([...students, ...accounts.map((account) => ({
+        id: account.id,
+        name: account.name,
+        studentId: account.studentId,
+        email: account.email,
+        passwordHash: account.passwordHash,
+        role: "STUDENT",
+        mustChangePassword: true
+    }))]);
 }
 
 function ensurePortalStudentRecord({ name, studentId, email }) {
@@ -253,7 +397,7 @@ function getRecommendations(student) {
 
 function getStudentDashboard(studentId) {
     const data = readPortalData();
-    const student = getStudentByIdentifier(studentId) || data.students[0];
+    const student = getStudentByIdentifier(studentId);
 
     if (!student) {
         return null;
@@ -411,11 +555,11 @@ app.get("/signup", (req, res) => {
     res.sendFile(path.join(frontendPath, "signup.html"));
 });
 
-app.get("/api/classes", (req, res) => {
+app.get("/api/classes", requireAuth, requireRole("ADMIN"), (req, res) => {
     res.json(readClasses());
 });
 
-app.post("/api/classes", (req, res) => {
+app.post("/api/classes", requireAuth, requireRole("ADMIN"), (req, res) => {
     const className = String(req.body.className || "").trim();
 
     if (!className) {
@@ -433,7 +577,7 @@ app.post("/api/classes", (req, res) => {
     res.status(201).json({ message: "Class added successfully.", className });
 });
 
-app.delete("/api/classes/:className", (req, res) => {
+app.delete("/api/classes/:className", requireAuth, requireRole("ADMIN"), (req, res) => {
     const className = decodeURIComponent(req.params.className);
     const classes = readClasses();
     const remainingClasses = classes.filter((existingClass) => existingClass !== className);
@@ -446,12 +590,12 @@ app.delete("/api/classes/:className", (req, res) => {
     res.json({ message: "Class deleted successfully." });
 });
 
-app.get("/api/students", (req, res) => {
+app.get("/api/students", requireAuth, requireRole("ADMIN"), (req, res) => {
     const students = readStudents();
     res.json(students.map(publicStudent));
 });
 
-app.get("/api/students/:id", (req, res) => {
+app.get("/api/students/:id", requireAuth, requireRole("ADMIN"), (req, res) => {
     const student = readStudents().find((record) => record.id === Number(req.params.id));
 
     if (!student) {
@@ -461,7 +605,7 @@ app.get("/api/students/:id", (req, res) => {
     res.json(publicStudent(student));
 });
 
-app.post("/api/students", (req, res) => {
+app.post("/api/students", requireAuth, requireRole("ADMIN"), (req, res) => {
     const { name, age, subject, className, class: classValue, rollNo, roll_no, fees } = req.body;
     const selectedClass = className || classValue;
     const selectedRollNo = rollNo || roll_no;
@@ -499,7 +643,7 @@ app.post("/api/students", (req, res) => {
     }
 });
 
-app.delete("/api/students/:id", (req, res) => {
+app.delete("/api/students/:id", requireAuth, requireRole("ADMIN"), (req, res) => {
     const id = Number(req.params.id);
     const students = readStudents();
     const remainingStudents = students.filter((student) => student.id !== id);
@@ -512,15 +656,15 @@ app.delete("/api/students/:id", (req, res) => {
     res.json({ message: "Student deleted successfully." });
 });
 
-app.get("/api/portal-data", (req, res) => {
+app.get("/api/portal-data", requireAuth, requireRole("ADMIN"), (req, res) => {
     res.json(readPortalData());
 });
 
-app.get("/api/course-recommendation-rules", (req, res) => {
+app.get("/api/course-recommendation-rules", requireAuth, requireRole("ADMIN"), (req, res) => {
     res.json(readPortalData().courseRecommendationRules || []);
 });
 
-app.post("/api/course-recommendation-rules", (req, res) => {
+app.post("/api/course-recommendation-rules", requireAuth, requireRole("ADMIN"), (req, res) => {
     const { source, target } = req.body || {};
 
     if (!source || !target) {
@@ -536,7 +680,7 @@ app.post("/api/course-recommendation-rules", (req, res) => {
     res.status(201).json({ message: "Recommendation rule saved successfully.", rule: { source, target } });
 });
 
-app.get("/api/programs", (req, res) => {
+app.get("/api/programs", requireAuth, requireRole("ADMIN"), (req, res) => {
     res.json(readPortalData().programs || []);
 });
 
@@ -554,7 +698,7 @@ app.get("/api/courses/:courseId", (req, res) => {
     res.json(course);
 });
 
-app.get("/api/student-dashboard/:studentId", (req, res) => {
+app.get("/api/student-dashboard/:studentId", requireAuth, canAccessStudent, (req, res) => {
     const dashboard = getStudentDashboard(req.params.studentId);
     if (!dashboard) {
         return res.status(404).json({ message: "Student dashboard not found." });
@@ -562,7 +706,7 @@ app.get("/api/student-dashboard/:studentId", (req, res) => {
     res.json(dashboard);
 });
 
-app.get("/api/recommendations/:studentId", (req, res) => {
+app.get("/api/recommendations/:studentId", requireAuth, canAccessStudent, (req, res) => {
     const student = getStudentByIdentifier(req.params.studentId);
 
     if (!student) {
@@ -572,7 +716,7 @@ app.get("/api/recommendations/:studentId", (req, res) => {
     res.json(getRecommendations(student));
 });
 
-app.get("/api/next-courses/:studentId", (req, res) => {
+app.get("/api/next-courses/:studentId", requireAuth, canAccessStudent, (req, res) => {
     const student = getStudentByIdentifier(req.params.studentId);
 
     if (!student) {
@@ -587,9 +731,11 @@ app.get("/api/next-courses/:studentId", (req, res) => {
     res.json(nextCourses);
 });
 
-app.post("/api/courses/:courseId/enroll", (req, res) => {
+app.post("/api/courses/:courseId/enroll", requireAuth, (req, res) => {
     const data = readPortalData();
-    const studentId = req.body.studentId || req.query.studentId || "STU-001";
+    const studentId = req.auth.role === "ADMIN"
+        ? String(req.body.studentId || req.query.studentId || "")
+        : String(req.auth.studentId || "");
     const course = (data.courses || []).find((item) => item.id === req.params.courseId || item.code === req.params.courseId);
     const student = getStudentByIdentifier(studentId) || data.students[0];
 
@@ -634,14 +780,13 @@ app.post("/api/courses/:courseId/enroll", (req, res) => {
     });
 });
 
-app.get("/api/admin-overview", (req, res) => {
+app.get("/api/admin-overview", requireAuth, requireRole("ADMIN"), (req, res) => {
     res.json(getAdminOverview());
 });
 
-app.post("/api/admin/students", (req, res) => {
+app.post("/api/admin/students", requireAuth, requireRole("ADMIN"), async (req, res) => {
     const {
         name,
-        email,
         studentId,
         program,
         semester,
@@ -658,15 +803,18 @@ app.post("/api/admin/students", (req, res) => {
     } = req.body || {};
 
     const normalizedName = String(name || "").trim();
-    const normalizedEmail = String(email || "").trim();
     const normalizedStudentId = String(studentId || "").trim();
     const normalizedProgram = String(program || "").trim();
     const numericSemester = Number(semester);
     const numericCgpa = Number(cgpa);
     const numericAttendance = Number(attendance);
 
-    if (!normalizedName || !normalizedEmail || !normalizedStudentId || !normalizedProgram) {
-        return res.status(400).json({ message: "Name, email, student ID, and program are required." });
+    if (!normalizedName || !normalizedStudentId || !normalizedProgram) {
+        return res.status(400).json({ message: "Name, student ID, and program are required." });
+    }
+
+    if (normalizedName.length > 120 || normalizedStudentId.length > 32 || !/^[A-Za-z0-9-]+$/.test(normalizedStudentId) || normalizedProgram.length > 120) {
+        return res.status(400).json({ message: "Name, student ID, or program has an invalid format or is too long." });
     }
 
     if (!Number.isInteger(numericSemester) || numericSemester < 1) {
@@ -681,19 +829,27 @@ app.post("/api/admin/students", (req, res) => {
         return res.status(400).json({ message: "Attendance must be between 0 and 100." });
     }
 
+    const optionalAmounts = [pendingAssignments, feePaid, feeTotal];
+    if (optionalAmounts.some((value) => value !== undefined && value !== null && value !== "" && (!Number.isFinite(Number(value)) || Number(value) < 0))) {
+        return res.status(400).json({ message: "Assignments and fee amounts must be non-negative numbers." });
+    }
+
     const data = readPortalData();
     const students = data.students || [];
-    const duplicate = students.some((student) =>
-        String(student.studentId || "").toLowerCase() === normalizedStudentId.toLowerCase() ||
-        String(student.email || "").toLowerCase() === normalizedEmail.toLowerCase()
+    const existingAccounts = readStudents();
+    const duplicate = [...students, ...existingAccounts].some((student) =>
+        String(student.studentId || "").toLowerCase() === normalizedStudentId.toLowerCase()
     );
 
     if (duplicate) {
         return res.status(409).json({ message: "A student with this ID or email already exists." });
     }
 
+    const reservedEmails = new Set([...students, ...existingAccounts].map((student) => String(student.email || "").toLowerCase()));
+    const normalizedEmail = generateStudentEmail(normalizedName, reservedEmails);
+    const temporaryPassword = generateTemporaryPassword();
     const newStudent = {
-        id: Date.now(),
+        id: nextPortalStudentId(students),
         name: normalizedName,
         email: normalizedEmail,
         studentId: normalizedStudentId,
@@ -716,12 +872,43 @@ app.post("/api/admin/students", (req, res) => {
         role: "STUDENT"
     };
 
-    data.students = [...students, newStudent];
-    writePortalData(data);
-    res.status(201).json({ message: "Student added successfully.", student: newStudent });
+    try {
+        if (pool) {
+            await databaseReady;
+            const duplicateInDatabase = await pool.query("SELECT 1 FROM students WHERE LOWER(student_id) = LOWER($1) OR LOWER(roll_number) = LOWER($1) OR LOWER(email) = LOWER($2)", [normalizedStudentId, normalizedEmail]);
+            if (duplicateInDatabase.rows.length) return res.status(409).json({ message: "A student with this ID or generated email already exists." });
+        }
+
+        const account = {
+            id: newStudent.id,
+            name: normalizedName,
+            studentId: normalizedStudentId,
+            email: normalizedEmail,
+            passwordHash: await bcrypt.hash(temporaryPassword, 10)
+        };
+        data.students = [...students, newStudent];
+        writePortalData(data);
+        try {
+            await saveStudentAccounts([account]);
+        } catch (error) {
+            data.students = students;
+            writePortalData(data);
+            throw error;
+        }
+
+        res.status(201).json({
+            message: "Student added. Share these credentials with the student; the temporary password will not be shown again.",
+            student: newStudent,
+            credentials: { studentId: normalizedStudentId, email: normalizedEmail, password: temporaryPassword }
+        });
+    } catch (error) {
+        if (error.code === "23505") return res.status(409).json({ message: "A student with this ID or generated email already exists." });
+        console.error("Admin student creation error:", error.message);
+        res.status(500).json({ message: "Unable to create the student account." });
+    }
 });
 
-app.post("/api/admin/students/bulk", (req, res) => {
+app.post("/api/admin/students/bulk", requireAuth, requireRole("ADMIN"), async (req, res) => {
     const records = Array.isArray(req.body) ? req.body : req.body && req.body.students;
 
     if (!Array.isArray(records) || records.length === 0) {
@@ -734,17 +921,15 @@ app.post("/api/admin/students/bulk", (req, res) => {
 
     const data = readPortalData();
     const students = data.students || [];
-    const existingIds = new Set(students.map((student) => String(student.studentId || "").toLowerCase()));
-    const existingEmails = new Set(students.map((student) => String(student.email || "").toLowerCase()));
+    const existingIds = new Set([...students, ...readStudents()].map((student) => String(student.studentId || "").toLowerCase()));
     const batchIds = new Set();
-    const batchEmails = new Set();
+    const reservedEmails = new Set([...students, ...readStudents()].map((student) => String(student.email || "").toLowerCase()));
     const errors = [];
     const newStudents = [];
 
     records.forEach((record, index) => {
         const row = index + 2;
         const normalizedName = String(record.name || "").trim();
-        const normalizedEmail = String(record.email || "").trim();
         const normalizedStudentId = String(record.studentId || "").trim();
         const normalizedProgram = String(record.program || "").trim();
         const numericSemester = Number(record.semester);
@@ -752,14 +937,14 @@ app.post("/api/admin/students/bulk", (req, res) => {
         const numericAttendance = Number(record.attendance);
         const rowErrors = [];
 
-        if (!normalizedName || !normalizedEmail || !normalizedStudentId || !normalizedProgram) {
-            rowErrors.push("name, email, studentId, and program are required");
+        if (!normalizedName || !normalizedStudentId || !normalizedProgram) {
+            rowErrors.push("name, studentId, and program are required");
         }
+        if (normalizedName.length > 120 || normalizedStudentId.length > 32 || !/^[A-Za-z0-9-]+$/.test(normalizedStudentId) || normalizedProgram.length > 120) rowErrors.push("name, student ID, or program has an invalid format or is too long");
         if (!Number.isInteger(numericSemester) || numericSemester < 1) rowErrors.push("semester must be a positive whole number");
         if (!Number.isFinite(numericCgpa) || numericCgpa < 0 || numericCgpa > 4) rowErrors.push("cgpa must be between 0 and 4");
         if (!Number.isFinite(numericAttendance) || numericAttendance < 0 || numericAttendance > 100) rowErrors.push("attendance must be between 0 and 100");
         if (existingIds.has(normalizedStudentId.toLowerCase()) || batchIds.has(normalizedStudentId.toLowerCase())) rowErrors.push("student ID already exists");
-        if (existingEmails.has(normalizedEmail.toLowerCase()) || batchEmails.has(normalizedEmail.toLowerCase())) rowErrors.push("email already exists");
 
         if (rowErrors.length) {
             errors.push(`Row ${row}: ${rowErrors.join("; ")}.`);
@@ -767,11 +952,13 @@ app.post("/api/admin/students/bulk", (req, res) => {
         }
 
         batchIds.add(normalizedStudentId.toLowerCase());
-        batchEmails.add(normalizedEmail.toLowerCase());
+        const email = generateStudentEmail(normalizedName, reservedEmails);
+        const temporaryPassword = generateTemporaryPassword();
+        const id = nextPortalStudentId([...students, ...newStudents]);
         newStudents.push({
-            id: Date.now() + index,
+            id,
             name: normalizedName,
-            email: normalizedEmail,
+            email,
             studentId: normalizedStudentId,
             program: normalizedProgram,
             semester: numericSemester,
@@ -785,7 +972,8 @@ app.post("/api/admin/students/bulk", (req, res) => {
             enrolledCourses: [],
             interests: [],
             admissionStatus: "Approved",
-            role: "STUDENT"
+            role: "STUDENT",
+            temporaryPassword
         });
     });
 
@@ -793,24 +981,72 @@ app.post("/api/admin/students/bulk", (req, res) => {
         return res.status(400).json({ message: "No students were added. Fix the following rows:", errors });
     }
 
-    data.students = [...students, ...newStudents];
-    writePortalData(data);
-    res.status(201).json({ message: `${newStudents.length} students added successfully.`, students: newStudents });
+    try {
+        if (pool) {
+            await databaseReady;
+            const ids = await pool.query("SELECT LOWER(COALESCE(student_id, roll_number)) AS student_id FROM students");
+            const databaseIds = new Set(ids.rows.map((row) => row.student_id));
+            if (newStudents.some((student) => databaseIds.has(student.studentId.toLowerCase()))) {
+                return res.status(409).json({ message: "A student ID already exists in the account database. No students were added." });
+            }
+        }
+
+        const accounts = await Promise.all(newStudents.map(async (student) => ({
+            id: student.id,
+            name: student.name,
+            studentId: student.studentId,
+            email: student.email,
+            passwordHash: await bcrypt.hash(student.temporaryPassword, 10)
+        })));
+        const studentRecords = newStudents.map(({ temporaryPassword, ...student }) => student);
+        data.students = [...students, ...studentRecords];
+        writePortalData(data);
+        try {
+            await saveStudentAccounts(accounts);
+        } catch (error) {
+            data.students = students;
+            writePortalData(data);
+            throw error;
+        }
+
+        res.status(201).json({
+            message: `${studentRecords.length} students added. Share these credentials; temporary passwords will not be shown again.`,
+            students: studentRecords,
+            credentials: newStudents.map((student) => ({ studentId: student.studentId, email: student.email, password: student.temporaryPassword }))
+        });
+    } catch (error) {
+        if (error.code === "23505") return res.status(409).json({ message: "A student ID or generated email already exists. No students were added." });
+        console.error("Bulk student creation error:", error.message);
+        res.status(500).json({ message: "Unable to create student accounts." });
+    }
 });
 
-app.delete("/api/admin/students/:id", (req, res) => {
+app.delete("/api/admin/students/:id", requireAuth, requireRole("ADMIN"), async (req, res) => {
     const studentId = Number(req.params.id);
     const data = readPortalData();
     const students = data.students || [];
-    const remainingStudents = students.filter((student) => student.id !== studentId);
-
-    if (remainingStudents.length === students.length) {
+    const removedStudent = students.find((student) => String(student.id) === String(studentId));
+    if (!removedStudent) {
         return res.status(404).json({ message: "Student not found." });
     }
 
-    data.students = remainingStudents;
-    writePortalData(data);
-    res.json({ message: "Student deleted successfully." });
+    try {
+        if (pool) {
+            await databaseReady;
+            await pool.query("DELETE FROM students WHERE id = $1 OR LOWER(student_id) = LOWER($2)", [studentId, removedStudent.studentId]);
+        }
+        const accounts = readStudents().filter((student) =>
+            String(student.id) !== String(studentId) &&
+            String(student.studentId || "").toLowerCase() !== String(removedStudent.studentId || "").toLowerCase()
+        );
+        writeStudents(accounts);
+        data.students = students.filter((student) => String(student.id) !== String(studentId));
+        writePortalData(data);
+        res.json({ message: "Student deleted successfully." });
+    } catch (error) {
+        console.error("Student deletion error:", error.message);
+        res.status(500).json({ message: "Unable to delete student account." });
+    }
 });
 
 app.get("/api/announcements", (req, res) => {
@@ -822,14 +1058,31 @@ app.get("/api/notifications", (req, res) => {
 });
 
 app.post("/signup", async (req, res) => {
-    const { name, studentId, email, password } = req.body;
+    const { name, studentId, email, password } = req.body || {};
+    const normalizedName = String(name || "").trim();
+    const normalizedStudentId = String(studentId || "").trim();
+    const normalizedEmail = String(email || "").trim().toLowerCase();
 
-    if (!name || !studentId || !email || !password) {
+    if (!normalizedName || !normalizedStudentId || !normalizedEmail || !password) {
         return res.status(400).json({ message: "Please fill in all fields." });
+    }
+    if (normalizedName.length > 120 || normalizedStudentId.length > 32 || !/^[A-Za-z0-9-]+$/.test(normalizedStudentId) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        return res.status(400).json({ message: "Please enter a valid name, student ID, and email." });
+    }
+    if (String(password).length < 10 || String(password).length > 128) {
+        return res.status(400).json({ message: "Password must be between 10 and 128 characters." });
+    }
+
+    const assignedStudent = (readPortalData().students || []).find((student) =>
+        String(student.email || "").toLowerCase() === normalizedEmail ||
+        String(student.studentId || "").toLowerCase() === normalizedStudentId.toLowerCase()
+    );
+    if (normalizedEmail === configuredAdminEmail || assignedStudent) {
+        return res.status(409).json({ message: "This email or student ID is already assigned. Contact an administrator." });
     }
 
     if (!pool) {
-        const existing = readStudents().find((student) => student.email === email || student.studentId === studentId);
+        const existing = readStudents().find((student) => String(student.email || "").toLowerCase() === normalizedEmail || String(student.studentId || "").toLowerCase() === normalizedStudentId.toLowerCase());
         if (existing) {
             return res.status(400).json({ message: "Email or Student ID already exists." });
         }
@@ -837,35 +1090,24 @@ app.post("/signup", async (req, res) => {
         const students = readStudents();
         const newStudent = {
             id: Date.now(),
-            name,
-            email,
-            studentId,
+            name: normalizedName,
+            email: normalizedEmail,
+            studentId: normalizedStudentId,
             passwordHash: bcrypt.hashSync(password, 10),
             role: "STUDENT",
-            program: "BS Computer Science",
-            semester: 3,
-            currentSemester: 3,
-            cgpa: 3.78,
-            attendance: 92,
-            pendingAssignments: 4,
-            feeStatus: "Paid",
-            currentCourses: ["CS201", "CS204", "DB101"],
-            enrolledCourses: ["CS201", "CS204", "DB101", "WEB101"],
-            completedCourses: ["CS101", "MTH101"],
-            interests: ["Web Development", "Artificial Intelligence"],
-            careerInterest: "Software Engineering"
+            mustChangePassword: false
         };
         students.push(newStudent);
         writeStudents(students);
-        ensurePortalStudentRecord({ name, studentId, email });
-        return res.status(201).json({ message: "Account created successfully!", student: { id: newStudent.id, name, studentId, email } });
+        ensurePortalStudentRecord({ name: normalizedName, studentId: normalizedStudentId, email: normalizedEmail });
+        return res.status(201).json({ message: "Account created successfully!", student: { id: newStudent.id, name: normalizedName, studentId: normalizedStudentId, email: normalizedEmail } });
     }
 
     try {
         await databaseReady;
         const existingStudent = await pool.query(
-            "SELECT * FROM students WHERE email = $1 OR student_id = $2",
-            [email, studentId]
+            "SELECT * FROM students WHERE LOWER(email) = LOWER($1) OR LOWER(student_id) = LOWER($2) OR LOWER(roll_number) = LOWER($2)",
+            [normalizedEmail, normalizedStudentId]
         );
 
         if (existingStudent.rows.length > 0) {
@@ -874,55 +1116,77 @@ app.post("/signup", async (req, res) => {
 
         const passwordHash = await bcrypt.hash(password, 10);
         const result = await pool.query(
-            `INSERT INTO students (name, student_id, email, password)
-            VALUES ($1, $2, $3, $4)
-            RETURNING id, name, student_id, email`,
-            [name, studentId, email, passwordHash]
+            `INSERT INTO students (name, student_id, roll_number, email, password)
+            VALUES ($1, $2, $2, $3, $4)
+            RETURNING id, name, student_id, roll_number, email`,
+            [normalizedName, normalizedStudentId, normalizedEmail, passwordHash]
         );
 
-        ensurePortalStudentRecord({ name, studentId, email });
-        res.status(201).json({
-            message: "Account created successfully!",
-            student: result.rows[0]
-        });
+        ensurePortalStudentRecord({ name: normalizedName, studentId: normalizedStudentId, email: normalizedEmail });
+        const student = { id: result.rows[0].id, name: normalizedName, studentId: normalizedStudentId, email: normalizedEmail, role: "STUDENT" };
+        res.status(201).json({ message: "Account created successfully!", student, accessToken: issueToken(student) });
     } catch (error) {
         console.error("Database error:", error.message);
         const students = readStudents();
-        const existingLocal = students.find((student) => student.email === email || student.studentId === studentId);
+        const existingLocal = students.find((student) => String(student.email || "").toLowerCase() === normalizedEmail || String(student.studentId || "").toLowerCase() === normalizedStudentId.toLowerCase());
         if (existingLocal) {
             return res.status(400).json({ message: "Email or Student ID already exists." });
         }
 
         const localStudent = {
             id: Date.now(),
-            name,
-            email,
-            studentId,
+            name: normalizedName,
+            email: normalizedEmail,
+            studentId: normalizedStudentId,
             passwordHash: bcrypt.hashSync(password, 10),
-            role: "STUDENT"
+            role: "STUDENT",
+            mustChangePassword: false
         };
         students.push(localStudent);
         writeStudents(students);
-        ensurePortalStudentRecord({ name, studentId, email });
+        ensurePortalStudentRecord({ name: normalizedName, studentId: normalizedStudentId, email: normalizedEmail });
         res.status(201).json({
             message: "Account created successfully!",
-            student: { id: localStudent.id, name, studentId, email }
+            student: { id: localStudent.id, name: normalizedName, studentId: normalizedStudentId, email: normalizedEmail, role: "STUDENT" },
+            accessToken: issueToken({ id: localStudent.id, name: normalizedName, studentId: normalizedStudentId, email: normalizedEmail, role: "STUDENT" })
         });
     }
 });
 
 app.post("/login", async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
+    const normalizedEmail = String(email || "").trim().toLowerCase();
 
-    if (!email || !password) {
+    if (!normalizedEmail || !password || normalizedEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
         return res.status(400).json({ message: "Please enter email and password." });
     }
 
-    const localStudent = readStudents().find((student) => student.email === email);
-    if (localStudent && localStudent.passwordHash && await bcrypt.compare(password, localStudent.passwordHash)) {
+    const adminEmail = String(process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+    const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH || "";
+    if (adminEmail && adminPasswordHash && normalizedEmail === adminEmail && await bcrypt.compare(password, adminPasswordHash)) {
+        const admin = { id: "admin", name: "Administrator", email: adminEmail, role: "ADMIN", mustChangePassword: false };
         return res.json({
             message: "Login successful!",
-            student: { id: localStudent.id, name: localStudent.name, studentId: localStudent.studentId || localStudent.rollNo, email: localStudent.email, role: localStudent.role || "STUDENT" }
+            student: admin,
+            accessToken: issueToken(admin)
+        });
+    }
+
+    const localStudent = readStudents().find((student) => String(student.email || "").toLowerCase() === normalizedEmail);
+    const localPasswordHash = localStudent && (localStudent.passwordHash || localStudent.password);
+    if (localStudent && localPasswordHash && await bcrypt.compare(password, localPasswordHash)) {
+        const student = {
+            id: localStudent.id,
+            name: localStudent.name,
+            studentId: localStudent.studentId || localStudent.rollNo,
+            email: localStudent.email,
+            role: localStudent.role || "STUDENT",
+            mustChangePassword: Boolean(localStudent.mustChangePassword)
+        };
+        return res.json({
+            message: "Login successful!",
+            student: { ...student, requiresPasswordChange: student.mustChangePassword },
+            accessToken: issueToken(student)
         });
     }
 
@@ -931,7 +1195,8 @@ app.post("/login", async (req, res) => {
     }
 
     try {
-        const result = await pool.query("SELECT * FROM students WHERE email = $1", [email]);
+        await databaseReady;
+        const result = await pool.query("SELECT * FROM students WHERE LOWER(email) = LOWER($1)", [normalizedEmail]);
 
         if (result.rows.length === 0) {
             return res.status(401).json({ message: "Invalid email or password." });
@@ -948,14 +1213,63 @@ app.post("/login", async (req, res) => {
             student: {
                 id: student.id,
                 name: student.name,
-                studentId: student.student_id,
+                studentId: student.student_id || student.roll_number,
                 email: student.email,
-                role: "STUDENT"
-            }
+                role: student.role || "STUDENT",
+                requiresPasswordChange: Boolean(student.must_change_password)
+            },
+                accessToken: issueToken({
+                    id: student.id,
+                    name: student.name,
+                    studentId: student.student_id || student.roll_number,
+                    email: student.email,
+                    role: student.role || "STUDENT",
+                    mustChangePassword: Boolean(student.must_change_password)
+                })
         });
     } catch (error) {
         console.error("Database error:", error.message);
         res.status(500).json({ message: "Database error" });
+    }
+});
+
+app.post("/change-password", requireAuth, async (req, res) => {
+    if (!req.auth.mustChangePassword) {
+        return res.status(403).json({ message: "Password changes are only available during first login." });
+    }
+    const newPassword = String((req.body || {}).newPassword || "");
+    if (newPassword.length < 12 || newPassword.length > 128 || !/[A-Za-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+        return res.status(400).json({ message: "New password must be 12-128 characters and include a letter and a number." });
+    }
+
+    try {
+        const passwordHash = await bcrypt.hash(newPassword, 10);
+        if (req.auth.role === "ADMIN") {
+            return res.status(403).json({ message: "Administrator password changes must be managed through deployment configuration." });
+        }
+
+        const localAccounts = readStudents();
+        const localAccountIndex = localAccounts.findIndex((student) => String(student.id) === String(req.auth.id) && String(student.email || "").toLowerCase() === String(req.auth.email).toLowerCase());
+        if (localAccountIndex >= 0) {
+            localAccounts[localAccountIndex] = { ...localAccounts[localAccountIndex], passwordHash, mustChangePassword: false };
+            delete localAccounts[localAccountIndex].password;
+            writeStudents(localAccounts);
+        } else if (pool) {
+            await databaseReady;
+            const updated = await pool.query(
+                "UPDATE students SET password = $1, must_change_password = FALSE WHERE id = $2 AND LOWER(email) = LOWER($3) RETURNING id",
+                [passwordHash, req.auth.id, req.auth.email]
+            );
+            if (!updated.rowCount) throw new Error("Student account was not found.");
+        } else {
+            throw new Error("Student account was not found.");
+        }
+
+        const student = { id: req.auth.id, name: req.auth.name, studentId: req.auth.studentId, email: req.auth.email, role: req.auth.role, mustChangePassword: false };
+        res.json({ message: "Password updated successfully.", student, accessToken: issueToken(student) });
+    } catch (error) {
+        console.error("Password update error:", error.message);
+        res.status(500).json({ message: "Unable to update the password." });
     }
 });
 
@@ -983,6 +1297,10 @@ app.get("/api/database-status", async (req, res) => {
 
 const port = process.env.PORT || 3000;
 
-app.listen(port, "0.0.0.0", () => {
-    console.log(`CampusDesk backend running on port ${port}`);
-});
+if (require.main === module) {
+    app.listen(port, "0.0.0.0", () => {
+        console.log(`CampusDesk backend running on port ${port}`);
+    });
+}
+
+module.exports = app;

@@ -66,6 +66,21 @@ student-admin-portal/
 
 6. Open your browser to `http://localhost:3000`
 
+### Admin Login and Student Credentials
+
+Configure these environment variables for the backend before deploying:
+
+- `ADMIN_EMAIL`: the administrator's login email.
+- `ADMIN_PASSWORD_HASH`: a bcrypt hash of the administrator password. Generate one with `node -e "console.log(require('bcryptjs').hashSync(process.argv[1], 12))" "your-admin-password"`.
+- `AUTH_TOKEN_SECRET`: a random signing secret. Generate one with `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` and keep it stable between restarts.
+- `STUDENT_EMAIL_DOMAIN` (optional): domain used for generated student usernames. Defaults to `students.campusdesk.local`.
+
+Production startup requires `ADMIN_EMAIL`, a valid bcrypt `ADMIN_PASSWORD_HASH`, and an `AUTH_TOKEN_SECRET` of at least 32 bytes. Configure the same signing secret on every backend instance.
+
+Admins sign in through `/login`. Creating a student generates a unique email-style username and a random temporary password. The password is bcrypt-hashed in the account store and returned only in the creation response for the admin to share. Students must choose a new password at first login before any student APIs can be used. Login tokens expire after eight hours.
+
+Run the focused authentication and account-flow tests with `npm test`.
+
 ## API Endpoints
 
 - `GET /api/students` - Get all students

@@ -3,111 +3,115 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login</title>
-    <style>
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        background: linear-gradient(135deg, #dbeafe, #f8fafc);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 100vh;
-      }
-      .login-box {
-        width: 100%;
-        max-width: 420px;
-        background: white;
-        padding: 30px;
-        border-radius: 16px;
-        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
-      }
-      h2 {
-        margin-top: 0;
-        text-align: center;
-        color: #0f172a;
-      }
-      form {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
-      label {
-        font-weight: 600;
-        color: #1e293b;
-      }
-      input {
-        padding: 12px 14px;
-        border-radius: 10px;
-        border: 1px solid #cbd5e1;
-        font-size: 1rem;
-      }
-      button {
-        padding: 12px 16px;
-        border: none;
-        border-radius: 10px;
-        background: #2563eb;
-        color: white;
-        font-weight: bold;
-        cursor: pointer;
-      }
-      .message {
-        margin-top: 16px;
-        font-weight: 600;
-      }
-      .success { color: #15803d; }
-      .error { color: #b91c1c; }
-      .footer-text {
-        margin-top: 16px;
-        text-align: center;
-        color: #475569;
-      }
-      .footer-text a {
-        color: #2563eb;
-        text-decoration: none;
-      }
-    </style>
+    <title>CampusDesk | Login</title>
+    <link rel="stylesheet" href="/auth.css" />
   </head>
   <body>
-    <div class="login-box">
-      <h2>Login</h2>
-      <form id="loginForm">
-        <div>
-          <label for="email">Email</label>
-          <input type="email" id="email" placeholder="Enter your email" required />
+    <main class="page login-page">
+      <header class="site-header">
+        <a class="brand" href="/">Campus<span>Desk</span></a>
+        <nav class="site-nav" aria-label="Account navigation">
+          <a href="/login" aria-current="page">Login</a>
+          <a href="/signup">Sign up</a>
+        </nav>
+      </header>
+
+      <section class="auth-layout">
+        <div class="auth-copy">
+          <div class="eyebrow">Student management, made simple</div>
+          <h1>Welcome back to CampusDesk.</h1>
+          <p>Sign in to continue to your student or administrator portal.</p>
         </div>
 
-        <div>
-          <label for="password">Password</label>
-          <input type="password" id="password" placeholder="Enter your password" required />
-        </div>
+        <section class="form-panel" aria-labelledby="loginTitle">
+          <div class="form-kicker">CampusDesk account</div>
+          <h2 id="loginTitle">Login</h2>
+          <p class="form-intro">Use your email and password to continue.</p>
+          <form id="loginForm">
+            <div id="loginFields">
+              <div class="field">
+                <label for="email">Email address</label>
+                <input type="email" id="email" placeholder="you@campus.edu" autocomplete="username" required />
+              </div>
 
-        <button type="submit">Login</button>
-      </form>
+              <div class="field">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" required />
+              </div>
+            </div>
 
-      <div id="message" class="message"></div>
+            <div id="changePasswordPanel" hidden>
+              <p>Your temporary password must be replaced before you can continue.</p>
+              <label for="newPassword">New password</label>
+              <input type="password" id="newPassword" minlength="12" maxlength="128" autocomplete="new-password" placeholder="At least 12 characters" />
+              <label for="confirmPassword">Confirm new password</label>
+              <input type="password" id="confirmPassword" minlength="12" maxlength="128" autocomplete="new-password" placeholder="Enter it again" />
+            </div>
 
-      <div class="footer-text">
-        Don’t have an account? <a href="/signup">Sign up</a>
-      </div>
-    </div>
+            <button type="submit" id="submitButton">Login</button>
+          </form>
+
+          <div id="message" class="message" role="status" aria-live="polite"></div>
+
+          <div class="footer-text">Don’t have an account? <a href="/signup">Create one</a></div>
+        </section>
+      </section>
+    </main>
 
     <script src="/config.js"></script>
     <script>
+      const isLocalDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       const configuredApiBase = window.API_BASE_URL || '';
       const API_BASE = configuredApiBase.includes('student-production-5870.up.railway.app')
         ? 'https://student-admin-portal-production.up.railway.app'
-        : configuredApiBase || 'https://student-admin-portal-production.up.railway.app';
+        : configuredApiBase || (isLocalDevelopment ? '' : 'https://student-admin-portal-production.up.railway.app');
       const form = document.getElementById('loginForm');
       const message = document.getElementById('message');
+      const loginFields = document.getElementById('loginFields');
+      const changePasswordPanel = document.getElementById('changePasswordPanel');
+      const submitButton = document.getElementById('submitButton');
+      let pendingPasswordChange = false;
+      let pendingToken = '';
+
+      function storeSession(student, accessToken) {
+        sessionStorage.setItem('student', JSON.stringify(student));
+        sessionStorage.setItem('accessToken', accessToken);
+      }
+
+      function enterPortal(student) {
+        if (student.role === 'ADMIN') {
+          window.location.href = '/admin';
+          return;
+        }
+        const studentId = student.studentId || student.student_id;
+        window.location.href = studentId
+          ? `/student-portal?studentId=${encodeURIComponent(studentId)}`
+          : '/student-portal';
+      }
 
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
 
         try {
+          if (pendingPasswordChange) {
+            const newPassword = document.getElementById('newPassword').value;
+            if (newPassword !== document.getElementById('confirmPassword').value) {
+              throw new Error('The new passwords do not match.');
+            }
+            const response = await fetch(API_BASE + '/change-password', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${pendingToken}` },
+              body: JSON.stringify({ newPassword })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Password update failed.');
+            storeSession(data.student, data.accessToken);
+            enterPortal(data.student);
+            return;
+          }
+
+          const email = document.getElementById('email').value;
+          const password = document.getElementById('password').value;
           const response = await fetch(API_BASE + '/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -122,12 +126,22 @@
 
           message.textContent = data.message;
           message.className = 'message success';
-          const studentId = data.student?.studentId || data.student?.student_id;
-          if (studentId) {
-            window.location.href = `/student-portal?studentId=${encodeURIComponent(studentId)}`;
-          } else {
-            window.location.href = '/student-portal';
+          if (data.student?.requiresPasswordChange) {
+            pendingPasswordChange = true;
+            pendingToken = data.accessToken;
+            storeSession(data.student, data.accessToken);
+            loginFields.hidden = true;
+            changePasswordPanel.hidden = false;
+            document.getElementById('newPassword').required = true;
+            document.getElementById('confirmPassword').required = true;
+            submitButton.textContent = 'Change password';
+            document.getElementById('newPassword').focus();
+            message.textContent = 'Set a new password to finish signing in.';
+            return;
           }
+
+          storeSession(data.student, data.accessToken);
+          enterPortal(data.student);
         } catch (error) {
           message.textContent = error instanceof TypeError
             ? 'The backend is unavailable. Please try again after the server is redeployed.'

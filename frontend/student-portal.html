@@ -97,12 +97,12 @@
     <aside class="sidebar">
       <div class="brand">Campus<span>Desk</span></div>
       <nav class="nav">
-        <a href="/student-portal?studentId=STU-001" class="active">Overview</a>
-        <a href="/student-portal?studentId=STU-001">My Courses</a>
-        <a href="/student-portal?studentId=STU-001">Results</a>
-        <a href="/student-portal?studentId=STU-001">Attendance</a>
-        <a href="/student-portal?studentId=STU-001">Fees</a>
-        <a href="/profile?studentId=STU-001">Profile</a>
+        <a href="/student-portal" class="active">Overview</a>
+        <a href="/student-portal">My Courses</a>
+        <a href="/student-portal">Results</a>
+        <a href="/student-portal">Attendance</a>
+        <a href="/student-portal">Fees</a>
+        <a id="profileLink" href="/profile">Profile</a>
       </nav>
       <button type="button" class="logout-btn" id="logoutBtn" aria-label="Log out">↪ Log out</button>
     </aside>
@@ -197,7 +197,20 @@
     const API_BASE = configuredApiBase.includes('student-production-5870.up.railway.app')
       ? 'https://student-admin-portal-production.up.railway.app'
       : configuredApiBase || (isLocalDevelopment ? '' : 'https://student-admin-portal-production.up.railway.app');
-    const studentId = new URLSearchParams(window.location.search).get('studentId') || 'STU-001';
+    const signedInStudent = (() => { try { return JSON.parse(sessionStorage.getItem('student') || 'null'); } catch { return null; } })();
+    const accessToken = sessionStorage.getItem('accessToken');
+    const hasStudentAccess = signedInStudent?.role === 'STUDENT' && Boolean(accessToken);
+    const studentId = signedInStudent?.studentId || signedInStudent?.id || '';
+    if (!hasStudentAccess || !studentId) window.location.replace('/login');
+    document.getElementById('profileLink').href = `/profile?studentId=${encodeURIComponent(studentId)}`;
+
+    async function authorizedFetch(url, options = {}) {
+      const headers = new Headers(options.headers || {});
+      headers.set('Authorization', `Bearer ${accessToken}`);
+      const response = await fetch(url, { ...options, headers });
+      if (response.status === 401 || response.status === 403) window.location.replace('/login');
+      return response;
+    }
     const toast = document.getElementById('toast');
     const modal = document.getElementById('courseModal');
     const statsGrid = document.getElementById('statsGrid');
@@ -322,7 +335,7 @@
       document.querySelectorAll('[data-view-course]').forEach((button) => {
         button.addEventListener('click', async () => {
           const courseId = button.getAttribute('data-view-course');
-          const response = await fetch(`${API_BASE}/api/courses/${encodeURIComponent(courseId)}`);
+          const response = await authorizedFetch(`${API_BASE}/api/courses/${encodeURIComponent(courseId)}`);
           const course = await response.json();
           openCourseModal(course);
         });
@@ -370,10 +383,9 @@
 
     async function enrollCourse(courseId) {
       try {
-        const response = await fetch(`${API_BASE}/api/courses/${encodeURIComponent(courseId)}/enroll`, {
+        const response = await authorizedFetch(`${API_BASE}/api/courses/${encodeURIComponent(courseId)}/enroll`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ studentId })
+          headers: { 'Content-Type': 'application/json' }
         });
 
         const data = await response.json();
@@ -393,7 +405,8 @@
 
     async function loadDashboard() {
       try {
-        const response = await fetch(`${API_BASE}/api/student-dashboard/${encodeURIComponent(studentId)}`);
+        if (!hasStudentAccess) return;
+        const response = await authorizedFetch(`${API_BASE}/api/student-dashboard/${encodeURIComponent(studentId)}`);
         if (!response.ok) throw new Error('Dashboard not available');
         const data = await response.json();
         const student = data.student;
@@ -423,7 +436,7 @@
 
     document.getElementById('nextCourseBtn').addEventListener('click', async () => {
       try {
-        const response = await fetch(`${API_BASE}/api/next-courses/${encodeURIComponent(studentId)}`);
+        const response = await authorizedFetch(`${API_BASE}/api/next-courses/${encodeURIComponent(studentId)}`);
         const data = await response.json();
         const list = data.map((course) => `
           <div class="mini-item">
@@ -446,7 +459,7 @@
         return;
       }
 
-      const response = await fetch(`${API_BASE}/api/student-dashboard/${encodeURIComponent(studentId)}`);
+      const response = await authorizedFetch(`${API_BASE}/api/student-dashboard/${encodeURIComponent(studentId)}`);
       const data = await response.json();
       const filtered = (data.recommendations || []).filter((course) => `${course.name} ${course.code} ${course.description}`.toLowerCase().includes(query.toLowerCase()));
       renderRecommendations(filtered);
