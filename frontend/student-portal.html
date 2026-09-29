@@ -172,6 +172,18 @@
           </div>
         </div>
       </section>
+
+      <section class="two-col">
+        <div class="panel">
+          <h2>Results &amp; Grades</h2>
+          <div id="resultsList" class="list-grid"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Classes &amp; Timetable</h2>
+          <div id="timetableList" class="list-grid"></div>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -218,6 +230,8 @@
     const announcementsContainer = document.getElementById('announcements');
     const myCoursesContainer = document.getElementById('myCourses');
     const attendanceContainer = document.getElementById('attendanceList');
+    const resultsContainer = document.getElementById('resultsList');
+    const timetableContainer = document.getElementById('timetableList');
     const progressOverview = document.getElementById('progressOverview');
     const searchInput = document.getElementById('globalSearch');
 
@@ -328,7 +342,34 @@
           </div>
           <strong>${item.percentage}%</strong>
         </div>
-      `).join('') : '<div class="empty">Attendance data unavailable.</div>';
+      `).join('') : '<div class="empty">No data available yet.</div>';
+    }
+
+    function renderResults(items) {
+      resultsContainer.innerHTML = (items || []).length ? items.map((item) => `
+        <div class="course-row">
+          <div>
+            <strong>${item.subject || item.courseCode}</strong>
+            <div class="muted">${item.courseCode || ''} · ${item.semester || ''}</div>
+          </div>
+          <div>
+            <div class="muted">Marks: ${item.marks ?? '—'}</div>
+            <strong>${item.grade || '—'}</strong>
+          </div>
+        </div>
+      `).join('') : '<div class="empty">No results available yet.</div>';
+    }
+
+    function renderTimetable(items) {
+      timetableContainer.innerHTML = (items || []).length ? items.map((item) => `
+        <div class="course-row">
+          <div>
+            <strong>${item.courseName}</strong>
+            <div class="muted">${item.courseCode} · ${item.instructor}</div>
+          </div>
+          <div class="muted">${item.schedule}</div>
+        </div>
+      `).join('') : '<div class="empty">No data available yet.</div>';
     }
 
     function bindCourseButtons() {
@@ -426,11 +467,13 @@
         renderAnnouncements(data.announcements || []);
         renderMyCourses(data.myCourses || []);
         renderAttendance(data.attendance || []);
+        renderResults(data.results || []);
+        renderTimetable(data.timetable || []);
         renderProgress(student, data.courses || []);
         document.title = `${student.name} | Student Portal`;
       } catch (error) {
-        document.getElementById('studentNameHeading').textContent = 'Student portal unavailable';
-        showToast('Unable to load student dashboard.', 'error');
+        document.getElementById('studentNameHeading').textContent = 'No data available';
+        showToast('No data available for your account yet. Please contact your administrator.', 'error');
       }
     }
 

@@ -74,7 +74,33 @@
       "feeTotal": 220000,
       "dueDate": "2026-09-15",
       "admissionStatus": "Approved",
-      "role": "STUDENT"
+      "role": "STUDENT",
+      "results": [
+        {
+          "courseCode": "CS101",
+          "subject": "Programming Fundamentals",
+          "marks": 88,
+          "grade": "A",
+          "credits": 3,
+          "semester": "Spring 2026"
+        },
+        {
+          "courseCode": "CS201",
+          "subject": "Data Structures",
+          "marks": 91,
+          "grade": "A+",
+          "credits": 4,
+          "semester": "Spring 2026"
+        },
+        {
+          "courseCode": "MTH201",
+          "subject": "Statistics and Probability",
+          "marks": 84,
+          "grade": "A-",
+          "credits": 3,
+          "semester": "Spring 2026"
+        }
+      ]
     },
     {
       "id": 2,
@@ -753,32 +779,6 @@
     {
       "source": "Statistics",
       "target": "Data Science"
-    }
-  ],
-  "results": [
-    {
-      "courseCode": "CS101",
-      "subject": "Programming Fundamentals",
-      "marks": 88,
-      "grade": "A",
-      "credits": 3,
-      "semester": "Spring 2026"
-    },
-    {
-      "courseCode": "CS201",
-      "subject": "Data Structures",
-      "marks": 91,
-      "grade": "A+",
-      "credits": 4,
-      "semester": "Spring 2026"
-    },
-    {
-      "courseCode": "MTH201",
-      "subject": "Statistics and Probability",
-      "marks": 84,
-      "grade": "A-",
-      "credits": 3,
-      "semester": "Spring 2026"
     }
   ],
   "fees": {

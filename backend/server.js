@@ -436,6 +436,12 @@ function getStudentDashboard(studentId) {
             ? Number(student.attendance || 0)
             : course.semester % 2 === 0 ? 95 : 92
     }));
+    const timetable = myCourses.map((course) => ({
+        courseCode: course.code,
+        courseName: course.name,
+        instructor: course.instructor || "Not listed",
+        schedule: course.schedule || "Not scheduled yet"
+    }));
     const studentFees = student.fees || {};
     const feeTotal = Number(student.feeTotal ?? studentFees.total ?? data.fees?.total ?? 0);
     const feePaid = Number(student.feePaid ?? studentFees.paid ?? data.fees?.paid ?? 0);
@@ -457,7 +463,7 @@ function getStudentDashboard(studentId) {
         },
         announcements: data.announcements || [],
         notifications: data.notifications || [],
-        results: data.results || [],
+        results: student.results || [],
         fees: {
             total: feeTotal,
             paid: feePaid,
@@ -468,6 +474,7 @@ function getStudentDashboard(studentId) {
         courses: data.courses || [],
         myCourses,
         attendance,
+        timetable,
         recommendations,
         nextCourses,
         admissions: data.admissions || []
@@ -737,7 +744,7 @@ app.post("/api/courses/:courseId/enroll", requireAuth, (req, res) => {
         ? String(req.body.studentId || req.query.studentId || "")
         : String(req.auth.studentId || "");
     const course = (data.courses || []).find((item) => item.id === req.params.courseId || item.code === req.params.courseId);
-    const student = getStudentByIdentifier(studentId) || data.students[0];
+    const student = getStudentByIdentifier(studentId);
 
     if (!course) {
         return res.status(404).json({ message: "Course not found." });
