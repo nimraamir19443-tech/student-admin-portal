@@ -81,15 +81,16 @@ describe("admin-created student accounts", () => {
         const wrongAdminLogin = await request("/login", { method: "POST", body: { email: "admin@example.test", password: "wrong" } });
         assert.equal(wrongAdminLogin.response.status, 401);
 
-        const claimedExistingStudent = await request("/signup", {
-            method: "POST",
-            body: { name: "Impersonator", studentId: "STU-001", email: "existing@example.test", password: "Password123!" }
-        });
-        assert.equal(claimedExistingStudent.response.status, 409);
-
         const adminLogin = await request("/login", { method: "POST", body: { email: "admin@example.test", password: "AdminPass123!" } });
         assert.equal(adminLogin.response.status, 200);
         assert.equal(adminLogin.data.student.role, "ADMIN");
+
+        const claimedExistingStudent = await request("/api/admin/students", {
+            method: "POST",
+            token: adminLogin.data.accessToken,
+            body: { name: "Impersonator", studentId: "STU-001", program: "Computer Science", semester: 1, cgpa: 3.2, attendance: 90 }
+        });
+        assert.equal(claimedExistingStudent.response.status, 409);
 
         const unauthenticatedCreate = await request("/api/admin/students", {
             method: "POST",

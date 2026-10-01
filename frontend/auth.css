@@ -82,7 +82,6 @@ button {
 }
 button::after { content: "→"; font-size: 20px; }
 .login-page button { background: var(--blue); }
-.signup-page button { background: var(--green); }
 button:hover { filter: brightness(.93); transform: translateY(-1px); }
 button:focus-visible, a:focus-visible { outline: 3px solid #f59e0b; outline-offset: 3px; }
 

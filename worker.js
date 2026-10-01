@@ -17,7 +17,6 @@ export default {
     const pageRoutes = {
       "/": "/",
       "/login": "/login",
-      "/signup": "/signup",
       "/admin": "/admin",
       "/student-portal": "/student-portal",
       "/profile": "/profile"

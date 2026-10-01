@@ -240,42 +240,6 @@ async function saveStudentAccounts(accounts) {
     }))]);
 }
 
-function ensurePortalStudentRecord({ name, studentId, email }) {
-    const data = readPortalData();
-    data.students = data.students || [];
-    const exists = data.students.some((student) =>
-        student && (student.studentId === studentId || student.email === email)
-    );
-
-    if (exists) {
-        return;
-    }
-
-    data.students.push({
-        id: Date.now(),
-        name,
-        email,
-        studentId,
-        program: "BS Computer Science",
-        semester: 1,
-        currentSemester: 1,
-        cgpa: 0,
-        attendance: 0,
-        pendingAssignments: 0,
-        feeStatus: "Pending",
-        feePaid: 0,
-        feeTotal: 0,
-        dueDate: "",
-        completedCourses: [],
-        currentCourses: [],
-        enrolledCourses: [],
-        interests: [],
-        admissionStatus: "Approved",
-        role: "STUDENT"
-    });
-    writePortalData(data);
-}
-
 function readClasses() {
     return readJson(classesFilePath, []);
 }
@@ -453,10 +417,6 @@ app.get("/profile", (req, res) => {
 
 app.get("/login", (req, res) => {
     res.sendFile(path.join(frontendPath, "login.html"));
-});
-
-app.get("/signup", (req, res) => {
-    res.sendFile(path.join(frontendPath, "signup.html"));
 });
 
 app.get("/api/classes", requireAuth, requireRole("ADMIN"), (req, res) => {
@@ -865,102 +825,6 @@ app.get("/api/announcements", (req, res) => {
 
 app.get("/api/notifications", (req, res) => {
     res.json(readPortalData().notifications || []);
-});
-
-app.post("/signup", async (req, res) => {
-    const { name, studentId, email, password } = req.body || {};
-    const normalizedName = String(name || "").trim();
-    const normalizedStudentId = String(studentId || "").trim();
-    const normalizedEmail = String(email || "").trim().toLowerCase();
-
-    if (!normalizedName || !normalizedStudentId || !normalizedEmail || !password) {
-        return res.status(400).json({ message: "Please fill in all fields." });
-    }
-    if (normalizedName.length > 120 || normalizedStudentId.length > 32 || !/^[A-Za-z0-9-]+$/.test(normalizedStudentId) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-        return res.status(400).json({ message: "Please enter a valid name, student ID, and email." });
-    }
-    if (String(password).length < 10 || String(password).length > 128) {
-        return res.status(400).json({ message: "Password must be between 10 and 128 characters." });
-    }
-
-    const assignedStudent = (readPortalData().students || []).find((student) =>
-        String(student.email || "").toLowerCase() === normalizedEmail ||
-        String(student.studentId || "").toLowerCase() === normalizedStudentId.toLowerCase()
-    );
-    if (normalizedEmail === configuredAdminEmail || assignedStudent) {
-        return res.status(409).json({ message: "This email or student ID is already assigned. Contact an administrator." });
-    }
-
-    if (!pool) {
-        const existing = readStudents().find((student) => String(student.email || "").toLowerCase() === normalizedEmail || String(student.studentId || "").toLowerCase() === normalizedStudentId.toLowerCase());
-        if (existing) {
-            return res.status(400).json({ message: "Email or Student ID already exists." });
-        }
-
-        const students = readStudents();
-        const newStudent = {
-            id: Date.now(),
-            name: normalizedName,
-            email: normalizedEmail,
-            studentId: normalizedStudentId,
-            passwordHash: bcrypt.hashSync(password, 10),
-            role: "STUDENT",
-            mustChangePassword: false
-        };
-        students.push(newStudent);
-        writeStudents(students);
-        ensurePortalStudentRecord({ name: normalizedName, studentId: normalizedStudentId, email: normalizedEmail });
-        return res.status(201).json({ message: "Account created successfully!", student: { id: newStudent.id, name: normalizedName, studentId: normalizedStudentId, email: normalizedEmail } });
-    }
-
-    try {
-        await databaseReady;
-        const existingStudent = await pool.query(
-            "SELECT * FROM students WHERE LOWER(email) = LOWER($1) OR LOWER(student_id) = LOWER($2) OR LOWER(roll_number) = LOWER($2)",
-            [normalizedEmail, normalizedStudentId]
-        );
-
-        if (existingStudent.rows.length > 0) {
-            return res.status(400).json({ message: "Email or Student ID already exists." });
-        }
-
-        const passwordHash = await bcrypt.hash(password, 10);
-        const result = await pool.query(
-            `INSERT INTO students (name, student_id, roll_number, email, password)
-            VALUES ($1, $2, $2, $3, $4)
-            RETURNING id, name, student_id, roll_number, email`,
-            [normalizedName, normalizedStudentId, normalizedEmail, passwordHash]
-        );
-
-        ensurePortalStudentRecord({ name: normalizedName, studentId: normalizedStudentId, email: normalizedEmail });
-        const student = { id: result.rows[0].id, name: normalizedName, studentId: normalizedStudentId, email: normalizedEmail, role: "STUDENT" };
-        res.status(201).json({ message: "Account created successfully!", student, accessToken: issueToken(student) });
-    } catch (error) {
-        console.error("Database error:", error.message);
-        const students = readStudents();
-        const existingLocal = students.find((student) => String(student.email || "").toLowerCase() === normalizedEmail || String(student.studentId || "").toLowerCase() === normalizedStudentId.toLowerCase());
-        if (existingLocal) {
-            return res.status(400).json({ message: "Email or Student ID already exists." });
-        }
-
-        const localStudent = {
-            id: Date.now(),
-            name: normalizedName,
-            email: normalizedEmail,
-            studentId: normalizedStudentId,
-            passwordHash: bcrypt.hashSync(password, 10),
-            role: "STUDENT",
-            mustChangePassword: false
-        };
-        students.push(localStudent);
-        writeStudents(students);
-        ensurePortalStudentRecord({ name: normalizedName, studentId: normalizedStudentId, email: normalizedEmail });
-        res.status(201).json({
-            message: "Account created successfully!",
-            student: { id: localStudent.id, name: normalizedName, studentId: normalizedStudentId, email: normalizedEmail, role: "STUDENT" },
-            accessToken: issueToken({ id: localStudent.id, name: normalizedName, studentId: normalizedStudentId, email: normalizedEmail, role: "STUDENT" })
-        });
-    }
 });
 
 app.post("/login", async (req, res) => {
