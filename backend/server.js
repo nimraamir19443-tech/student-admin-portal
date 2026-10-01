@@ -319,82 +319,6 @@ function getStudentByIdentifier(studentIdentifier) {
     }) || null;
 }
 
-function courseMatchScore(student, course) {
-    let score = 0;
-    const reasons = [];
-
-    if (course.program === student.program) {
-        score += 35;
-        reasons.push("Required for your program");
-    }
-
-    if (course.semester && course.semester <= (student.currentSemester || student.semester || 1) + 1) {
-        score += 15;
-        reasons.push("Suitable for your current academic stage");
-    }
-
-    const completed = new Set(student.completedCourses || []);
-    const current = new Set(student.currentCourses || []);
-    const enrolled = new Set(student.enrolledCourses || []);
-    const prereqList = Array.isArray(course.prerequisites) ? course.prerequisites : [];
-    const hasPrereqs = prereqList.length === 0 || prereqList.every((prereq) => completed.has(prereq) || current.has(prereq) || enrolled.has(prereq));
-
-    if (hasPrereqs) {
-        score += 20;
-        reasons.push("You have the prerequisite foundation");
-    } else {
-        const missing = prereqList.filter((prereq) => !completed.has(prereq) && !current.has(prereq) && !enrolled.has(prereq));
-        if (missing.length) {
-            score -= Math.min(20, missing.length * 8);
-            reasons.push(`Missing prerequisite: ${missing.join(", ")}`);
-        }
-    }
-
-    const tagMatches = (course.tags || []).filter((tag) => (student.interests || []).some((interest) => interest.toLowerCase() === tag.toLowerCase()));
-    if (tagMatches.length) {
-        score += 10;
-        reasons.push("Matches your interests");
-    }
-
-    if (student.careerInterest && (course.tags || []).some((tag) => tag.toLowerCase() === String(student.careerInterest).toLowerCase())) {
-        score += 10;
-        reasons.push("Aligned with your career interest");
-    }
-
-    if (Array.isArray(course.unlocks) && course.unlocks.some((unlock) => [...(student.completedCourses || []), ...(student.currentCourses || [])].includes(unlock))) {
-        score += 10;
-        reasons.push("Builds toward future learning goals");
-    }
-
-    return {
-        score: Math.max(10, Math.min(98, Math.round(score))),
-        reasons: reasons.slice(0, 4)
-    };
-}
-
-function getRecommendations(student) {
-    const data = readPortalData();
-    const candidateCourses = data.courses.filter((course) => {
-        if (!course) return false;
-        const completed = new Set(student.completedCourses || []);
-        const current = new Set(student.currentCourses || []);
-        const enrolled = new Set(student.enrolledCourses || []);
-        return !completed.has(course.id) && !current.has(course.id) && !enrolled.has(course.id);
-    });
-
-    return candidateCourses
-        .map((course) => {
-            const match = courseMatchScore(student, course);
-            return {
-                ...course,
-                matchScore: match.score,
-                reasons: match.reasons
-            };
-        })
-        .sort((a, b) => b.matchScore - a.matchScore)
-        .slice(0, 6);
-}
-
 function getStudentDashboard(studentId) {
     const data = readPortalData();
     const student = getStudentByIdentifier(studentId);
@@ -402,12 +326,6 @@ function getStudentDashboard(studentId) {
     if (!student) {
         return null;
     }
-
-    const recommendations = getRecommendations(student);
-    const nextCourses = recommendations.slice(0, 3).map((course) => ({
-        ...course,
-        explanation: course.reasons.join(" • ")
-    }));
 
     const courseCatalog = data.courses || [];
     const coursesById = new Map(courseCatalog.flatMap((course) => [
@@ -432,9 +350,7 @@ function getStudentDashboard(studentId) {
 
     const attendance = myCourses.map((course) => ({
         course: course.name,
-        percentage: course.courseDetailsAvailable === false
-            ? Number(student.attendance || 0)
-            : course.semester % 2 === 0 ? 95 : 92
+        percentage: Number(student.attendance || 0)
     }));
     const timetable = myCourses.map((course) => ({
         courseCode: course.code,
@@ -453,13 +369,13 @@ function getStudentDashboard(studentId) {
             studentId: student.studentId,
             program: student.program,
             semester: student.currentSemester || student.semester || 1,
-            cgpa: student.cgpa || 3.5,
-            attendance: student.attendance || 90,
-            pendingAssignments: student.pendingAssignments || 3,
-            feeStatus: student.feeStatus || "Paid",
-            feePaid: student.feePaid || 0,
-            feeTotal: student.feeTotal || 0,
-            dueDate: student.dueDate || "2026-09-15"
+            cgpa: Number(student.cgpa ?? 0),
+            attendance: Number(student.attendance ?? 0),
+            pendingAssignments: Number(student.pendingAssignments ?? 0),
+            feeStatus: student.feeStatus || "Not available",
+            feePaid: Number(student.feePaid ?? 0),
+            feeTotal: Number(student.feeTotal ?? 0),
+            dueDate: student.dueDate || ""
         },
         announcements: data.announcements || [],
         notifications: data.notifications || [],
@@ -475,8 +391,6 @@ function getStudentDashboard(studentId) {
         myCourses,
         attendance,
         timetable,
-        recommendations,
-        nextCourses,
         admissions: data.admissions || []
     };
 }
@@ -494,29 +408,12 @@ function getAdminOverview() {
         ? (studentList.reduce((sum, student) => sum + (student.cgpa || 0), 0) / studentList.length).toFixed(2)
         : "0.00";
 
-    const courseCounts = courseList.reduce((acc, course) => {
-        acc[course.name] = (acc[course.name] || 0) + 1;
-        return acc;
-    }, {});
-
-    const mostEnrolledCourses = Object.entries(courseCounts)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-
-    const attendanceStats = courseList.map((course) => ({
-        name: course.name,
-        value: Math.min(98, Math.max(60, 85 + (course.semester % 5) * 2))
-    }));
-
     return {
         totalStudents,
         activeStudents,
         newAdmissions,
         totalCourses: courseList.length,
-        mostEnrolledCourses,
         averageGpa: Number(averageGpa),
-        attendanceStats,
         programs: programList,
         students: studentList,
         courses: courseList,
@@ -667,26 +564,6 @@ app.get("/api/portal-data", requireAuth, requireRole("ADMIN"), (req, res) => {
     res.json(readPortalData());
 });
 
-app.get("/api/course-recommendation-rules", requireAuth, requireRole("ADMIN"), (req, res) => {
-    res.json(readPortalData().courseRecommendationRules || []);
-});
-
-app.post("/api/course-recommendation-rules", requireAuth, requireRole("ADMIN"), (req, res) => {
-    const { source, target } = req.body || {};
-
-    if (!source || !target) {
-        return res.status(400).json({ message: "Both source and target course are required." });
-    }
-
-    const data = readPortalData();
-    const rules = data.courseRecommendationRules || [];
-    const nextRules = [...rules, { source, target }];
-    data.courseRecommendationRules = nextRules;
-    writePortalData(data);
-
-    res.status(201).json({ message: "Recommendation rule saved successfully.", rule: { source, target } });
-});
-
 app.get("/api/programs", requireAuth, requireRole("ADMIN"), (req, res) => {
     res.json(readPortalData().programs || []);
 });
@@ -711,80 +588,6 @@ app.get("/api/student-dashboard/:studentId", requireAuth, canAccessStudent, (req
         return res.status(404).json({ message: "Student dashboard not found." });
     }
     res.json(dashboard);
-});
-
-app.get("/api/recommendations/:studentId", requireAuth, canAccessStudent, (req, res) => {
-    const student = getStudentByIdentifier(req.params.studentId);
-
-    if (!student) {
-        return res.status(404).json({ message: "Student not found." });
-    }
-
-    res.json(getRecommendations(student));
-});
-
-app.get("/api/next-courses/:studentId", requireAuth, canAccessStudent, (req, res) => {
-    const student = getStudentByIdentifier(req.params.studentId);
-
-    if (!student) {
-        return res.status(404).json({ message: "Student not found." });
-    }
-
-    const nextCourses = getRecommendations(student).slice(0, 3).map((course) => ({
-        ...course,
-        explanation: course.reasons.join(" • ")
-    }));
-
-    res.json(nextCourses);
-});
-
-app.post("/api/courses/:courseId/enroll", requireAuth, (req, res) => {
-    const data = readPortalData();
-    const studentId = req.auth.role === "ADMIN"
-        ? String(req.body.studentId || req.query.studentId || "")
-        : String(req.auth.studentId || "");
-    const course = (data.courses || []).find((item) => item.id === req.params.courseId || item.code === req.params.courseId);
-    const student = getStudentByIdentifier(studentId);
-
-    if (!course) {
-        return res.status(404).json({ message: "Course not found." });
-    }
-
-    if (!student) {
-        return res.status(404).json({ message: "Student not found." });
-    }
-
-    const completed = new Set(student.completedCourses || []);
-    const current = new Set(student.currentCourses || []);
-    const enrolled = new Set(student.enrolledCourses || []);
-    const missingPrerequisites = (course.prerequisites || []).filter((prereq) => !completed.has(prereq) && !current.has(prereq) && !enrolled.has(prereq));
-
-    if (missingPrerequisites.length > 0) {
-        return res.status(400).json({
-            message: "You cannot enroll yet.",
-            missingPrerequisites,
-            status: "prerequisite_blocked"
-        });
-    }
-
-    if (!student.enrolledCourses) student.enrolledCourses = [];
-    if (!student.currentCourses) student.currentCourses = [];
-    if (!student.enrolledCourses.includes(course.id)) student.enrolledCourses.push(course.id);
-    if (!student.currentCourses.includes(course.id)) student.currentCourses.push(course.id);
-
-    data.students = data.students.map((item) => item.id === student.id ? student : item);
-    writePortalData(data);
-
-    res.json({
-        message: "Course successfully added!",
-        course,
-        student: {
-            id: student.id,
-            name: student.name,
-            studentId: student.studentId
-        },
-        status: "enrolled"
-    });
 });
 
 app.get("/api/admin-overview", requireAuth, requireRole("ADMIN"), (req, res) => {

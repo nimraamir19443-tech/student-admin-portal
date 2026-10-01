@@ -78,8 +78,6 @@
     .mini-list { display: grid; gap: 10px; }
     .mini-item { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--panel-soft); }
     .mini-item strong { display: block; margin-bottom: 4px; }
-    .rule-list { display: grid; gap: 10px; margin-top: 12px; }
-    .rule-item { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--panel-soft); }
     .primary-btn { background: linear-gradient(135deg, var(--primary), #4a8af6); color: white; border: none; border-radius: 10px; padding: 12px 16px; font-weight: 700; cursor: pointer; }
     .pill { display: inline-block; padding: 5px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; }
     .pill.success { background: rgba(23,163,106,0.12); color: var(--success); }
@@ -162,18 +160,6 @@
 
       <section class="panel-row">
         <div class="panel">
-          <h2>Course Recommendation Rules</h2>
-          <form id="ruleForm">
-            <div class="search-row">
-              <input id="ruleSource" type="text" placeholder="Source course" />
-              <input id="ruleTarget" type="text" placeholder="Target course" />
-            </div>
-            <button type="submit" class="primary-btn">Save Rule</button>
-          </form>
-          <div id="ruleList" class="rule-list"></div>
-        </div>
-
-        <div class="panel">
           <h2>Announcements</h2>
           <div id="announcementList" class="mini-list"></div>
         </div>
@@ -231,7 +217,6 @@
     const studentTableBody = document.getElementById('studentTableBody');
     const admissionsList = document.getElementById('admissionsList');
     const announcementList = document.getElementById('announcementList');
-    const ruleList = document.getElementById('ruleList');
     const studentSearch = document.getElementById('studentSearch');
     const studentForm = document.getElementById('studentForm');
     const studentCsv = document.getElementById('studentCsv');
@@ -351,15 +336,6 @@
       `).join('') : '<div class="empty">No announcements available.</div>';
     }
 
-    function renderRules(data) {
-      ruleList.innerHTML = (data || []).length ? data.map((rule) => `
-        <div class="rule-item">
-          <strong>${rule.source}</strong>
-          <div class="muted">→ ${rule.target}</div>
-        </div>
-      `).join('') : '<div class="empty">No recommendation rules have been created.</div>';
-    }
-
     async function loadDashboard() {
       try {
         if (!hasAdminAccess) return;
@@ -373,39 +349,11 @@
         renderStudents(overview);
         renderAdmissions(overview);
         renderAnnouncements(overview);
-
-        const rulesResponse = await authorizedFetch(`${API_BASE}/api/course-recommendation-rules`);
-        if (!rulesResponse.ok) {
-          throw new Error(`Recommendation rules request failed (${rulesResponse.status}).`);
-        }
-
-        const rules = await rulesResponse.json();
-        renderRules(rules);
       } catch (error) {
         console.error('Unable to load admin dashboard:', error);
         statsGrid.innerHTML = '<div class="empty">The dashboard is temporarily unavailable. Please try again after the backend is redeployed.</div>';
       }
     }
-
-    document.getElementById('ruleForm').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const source = document.getElementById('ruleSource').value.trim();
-      const target = document.getElementById('ruleTarget').value.trim();
-
-      if (!source || !target) {
-        alert('Please enter both source and target courses.');
-        return;
-      }
-
-      await authorizedFetch(`${API_BASE}/api/course-recommendation-rules`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source, target })
-      });
-
-      document.getElementById('ruleForm').reset();
-      await loadDashboard();
-    });
 
     studentSearch.addEventListener('input', () => loadDashboard());
 

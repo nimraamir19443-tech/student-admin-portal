@@ -57,14 +57,6 @@
     .chip.warning { background: rgba(245,185,90,0.15); color: #c98507; }
     .main-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; }
     .panel h2 { margin: 0 0 16px; font-size: 1.1rem; }
-    .course-list { display: grid; gap: 14px; }
-    .course-item { display: flex; justify-content: space-between; gap: 12px; align-items: center; border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; background: var(--panel-soft); }
-    .course-meta strong { display: block; margin-bottom: 4px; font-size: 1rem; }
-    .course-meta small { color: var(--text-soft); }
-    .match-pill { background: rgba(23,163,106,0.12); color: var(--success); padding: 8px 10px; border-radius: 999px; font-weight: 700; min-width: 90px; text-align: center; }
-    .course-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-    button.secondary { background: transparent; border: 1px solid var(--line); color: var(--text); }
-    button.ghost { background: rgba(47,106,245,0.08); border: 1px solid rgba(47,106,245,0.15); color: var(--primary); }
     .mini-list { display: grid; gap: 12px; }
     .mini-item { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--panel-soft); }
     .mini-item strong { display: block; margin-bottom: 4px; }
@@ -81,15 +73,9 @@
     .muted-rule { color: var(--text-soft); }
     .toast { position: fixed; right: 24px; bottom: 24px; background: var(--panel); border: 1px solid var(--line); color: var(--text); border-radius: 12px; padding: 14px 18px; box-shadow: var(--shadow); opacity: 0; transform: translateY(12px); pointer-events: none; transition: all 0.2s ease; }
     .toast.show { opacity: 1; transform: translateY(0); }
-    .modal { position: fixed; inset: 0; background: rgba(10, 16, 24, 0.56); display: none; align-items: center; justify-content: center; padding: 22px; }
-    .modal.show { display: flex; }
-    .modal-content { width: min(760px, 100%); background: var(--panel); border-radius: 20px; padding: 24px; border: 1px solid var(--line); box-shadow: var(--shadow); }
-    .close-btn { background: transparent; border: none; color: var(--text-soft); font-size: 2rem; cursor: pointer; line-height: 1; }
-    .tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px; }
-    .tag { background: rgba(47,106,245,0.08); color: var(--primary); border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700; }
     .empty { color: var(--text-soft); padding: 14px 0; }
     @media (max-width: 980px) { .app-shell { grid-template-columns: 1fr; } .sidebar { padding: 20px 18px; } .nav { flex-direction: row; flex-wrap: wrap; } .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .main-grid, .two-col { grid-template-columns: 1fr; } }
-    @media (max-width: 640px) { .main { padding: 18px; } .hero, .topbar { flex-direction: column; align-items: stretch; } .stats-grid { grid-template-columns: 1fr; } .course-item { flex-direction: column; align-items: flex-start; } }
+    @media (max-width: 640px) { .main { padding: 18px; } .hero, .topbar { flex-direction: column; align-items: stretch; } .stats-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -110,7 +96,7 @@
     <main class="main">
       <header class="topbar">
         <div class="searchbar">
-          <input id="globalSearch" type="text" placeholder="Search courses, instructors or announcements" />
+          <input id="globalSearch" type="text" placeholder="Search my courses or announcements" />
         </div>
         <div class="topbar-right">
           <div class="avatar-pill">
@@ -126,15 +112,14 @@
           <h1 id="studentNameHeading">Loading...</h1>
           <div class="muted" id="studentMeta">Student dashboard</div>
         </div>
-        <button class="primary-btn" id="nextCourseBtn">What Should I Take Next?</button>
       </section>
 
       <section class="stats-grid" id="statsGrid"></section>
 
       <section class="main-grid">
         <div class="panel">
-          <h2>Recommended Courses For You</h2>
-          <div id="recommendations" class="course-list"></div>
+          <h2>My Courses</h2>
+          <div id="myCourses" class="list-grid"></div>
         </div>
 
         <div class="panel">
@@ -145,21 +130,15 @@
 
       <section class="two-col">
         <div class="panel">
-          <h2>My Courses</h2>
-          <div id="myCourses" class="list-grid"></div>
-        </div>
-
-        <div class="panel">
           <h2>Academic Progress</h2>
           <div id="progressOverview"></div>
         </div>
-      </section>
 
-      <section class="two-col">
         <div class="panel">
           <h2>Attendance</h2>
           <div id="attendanceList" class="list-grid"></div>
         </div>
+      </section>
 
         <div class="panel">
           <h2>Fees</h2>
@@ -189,19 +168,6 @@
 
   <div id="toast" class="toast"></div>
 
-  <div id="courseModal" class="modal" aria-modal="true">
-    <div class="modal-content">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
-        <div>
-          <div class="eyebrow">Course Details</div>
-          <h2 id="modalCourseTitle" style="margin: 8px 0 0;">Course</h2>
-        </div>
-        <button class="close-btn" type="button" id="closeModal">×</button>
-      </div>
-      <div id="modalCourseBody"></div>
-    </div>
-  </div>
-
   <script src="/config.js"></script>
   <script>
     const isLocalDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -224,9 +190,7 @@
       return response;
     }
     const toast = document.getElementById('toast');
-    const modal = document.getElementById('courseModal');
     const statsGrid = document.getElementById('statsGrid');
-    const recommendationsContainer = document.getElementById('recommendations');
     const announcementsContainer = document.getElementById('announcements');
     const myCoursesContainer = document.getElementById('myCourses');
     const attendanceContainer = document.getElementById('attendanceList');
@@ -234,6 +198,7 @@
     const timetableContainer = document.getElementById('timetableList');
     const progressOverview = document.getElementById('progressOverview');
     const searchInput = document.getElementById('globalSearch');
+    let dashboardData = null;
 
     document.getElementById('logoutBtn').addEventListener('click', () => {
       localStorage.removeItem('student');
@@ -251,48 +216,18 @@
 
     function renderStats(student) {
       const cards = [
-        { label: 'Enrolled Courses', value: (student.enrolledCourses || []).length, tag: 'Open' },
-        { label: 'CGPA', value: (student.cgpa || 3.5).toFixed(2), tag: 'Good' },
-        { label: 'Attendance', value: `${student.attendance || 90}%`, tag: 'On track' },
-        { label: 'Pending Assignments', value: student.pendingAssignments || 0, tag: '4 due' }
+        { label: 'Enrolled Courses', value: (student.enrolledCourses || []).length },
+        { label: 'CGPA', value: Number(student.cgpa ?? 0).toFixed(2) },
+        { label: 'Attendance', value: `${student.attendance ?? 0}%` },
+        { label: 'Pending Assignments', value: student.pendingAssignments ?? 0 }
       ];
 
-      statsGrid.innerHTML = cards.map((card, index) => `
+      statsGrid.innerHTML = cards.map((card) => `
         <div class="stat-card">
           <div class="stat-label">${card.label}</div>
           <div class="stat-value">${card.value}</div>
-          <span class="chip ${index === 2 ? 'warning' : 'success'}">${card.tag}</span>
         </div>
       `).join('');
-    }
-
-    function renderRecommendations(items) {
-      if (!items || !items.length) {
-        recommendationsContainer.innerHTML = '<div class="empty">No recommendations available yet.</div>';
-        return;
-      }
-
-      const filtered = items.filter((course) => {
-        const value = searchInput.value.trim().toLowerCase();
-        if (!value) return true;
-        return `${course.name} ${course.code} ${course.description}`.toLowerCase().includes(value);
-      });
-
-      recommendationsContainer.innerHTML = filtered.length ? filtered.map((course) => `
-        <div class="course-item">
-          <div class="course-meta">
-            <strong>${course.name}</strong>
-            <small>${course.code} · ${course.instructor}</small>
-          </div>
-          <div class="match-pill">${course.matchScore}% Match</div>
-          <div class="course-actions">
-            <button type="button" class="secondary" data-view-course="${course.id}">View Details</button>
-            <button type="button" class="ghost" data-enroll-course="${course.id}">Add Course</button>
-          </div>
-        </div>
-      `).join('') : '<div class="empty">No course matches your search.</div>';
-
-      bindCourseButtons();
     }
 
     function renderAnnouncements(items) {
@@ -311,26 +246,26 @@
             <strong>${course.name}</strong>
             <div class="muted">${course.code} · ${course.instructor}</div>
           </div>
-          <div>
-            <div class="muted">Progress: ${Math.max(35, Math.min(96, 60 + (course.semester % 3) * 8))}%</div>
-            <div class="muted">Attendance: 92%</div>
-          </div>
+          <div class="muted">${course.credits ? course.credits + ' credits' : '—'}</div>
         </div>
-      `).join('') : '<div class="empty">No courses added yet.</div>';
+      `).join('') : '<div class="empty">No data available yet.</div>';
     }
 
-    function renderProgress(student, courses) {
-      const completed = (student.completedCourses || []).length || 5;
-      const total = Math.max(completed + (student.currentCourses || []).length + 2, 12);
+    function renderProgress(student) {
+      const completed = (student.completedCourses || []).length;
+      const current = (student.currentCourses || []).length;
+      const total = completed + current;
+      if (!total) {
+        progressOverview.innerHTML = '<div class="empty">No data available yet.</div>';
+        return;
+      }
       const percent = Math.round((completed / total) * 100);
       progressOverview.innerHTML = `
-        <div class="row"><span class="muted-rule">Semester GPA</span><strong>${(student.cgpa || 3.5).toFixed(2)}</strong></div>
-        <div class="row"><span class="muted-rule">Overall CGPA</span><strong>${(student.cgpa || 3.5).toFixed(2)}</strong></div>
-        <div class="row" style="margin-top: 12px;"><span class="muted-rule">Degree Progress</span><strong>${completed}/${total}</strong></div>
+        <div class="row"><span class="muted-rule">CGPA</span><strong>${(student.cgpa || 0).toFixed(2)}</strong></div>
+        <div class="row" style="margin-top: 12px;"><span class="muted-rule">Courses completed</span><strong>${completed}/${total}</strong></div>
         <div class="progress-wrap">
           <div class="progress-line"><div class="progress-bar" style="width:${percent}%"></div></div>
         </div>
-        <div class="muted" style="margin-top: 12px;">${courses.length} active relevant courses available.</div>
       `;
     }
 
@@ -372,84 +307,13 @@
       `).join('') : '<div class="empty">No data available yet.</div>';
     }
 
-    function bindCourseButtons() {
-      document.querySelectorAll('[data-view-course]').forEach((button) => {
-        button.addEventListener('click', async () => {
-          const courseId = button.getAttribute('data-view-course');
-          const response = await authorizedFetch(`${API_BASE}/api/courses/${encodeURIComponent(courseId)}`);
-          const course = await response.json();
-          openCourseModal(course);
-        });
-      });
-
-      document.querySelectorAll('[data-enroll-course]').forEach((button) => {
-        button.addEventListener('click', async () => {
-          const courseId = button.getAttribute('data-enroll-course');
-          await enrollCourse(courseId);
-        });
-      });
-    }
-
-    function openCourseModal(course) {
-      document.getElementById('modalCourseTitle').textContent = `${course.name} (${course.code})`;
-      document.getElementById('modalCourseBody').innerHTML = `
-        <p class="muted">${course.description}</p>
-        <div class="tag-list">
-          <span class="tag">${course.instructor}</span>
-          <span class="tag">${course.credits} Credit Hours</span>
-          <span class="tag">${course.difficulty}</span>
-          <span class="tag">${course.schedule}</span>
-        </div>
-        <div class="row"><span class="muted-rule">Prerequisites</span><strong>${(course.prerequisites || []).join(', ') || 'None'}</strong></div>
-        <div class="row" style="margin-top: 10px;"><span class="muted-rule">Duration</span><strong>${course.duration}</strong></div>
-        <div class="row" style="margin-top: 10px;"><span class="muted-rule">Enrollment Status</span><strong>${course.enrollmentStatus}</strong></div>
-        <div style="margin-top: 18px;">
-          <h3>What you will learn</h3>
-          <ul>${(course.whatYouWillLearn || []).map((item) => `<li>${item}</li>`).join('')}</ul>
-        </div>
-        <div style="margin-top: 18px; display:flex; gap:10px;">
-          <button type="button" class="primary-btn" data-enroll-course-modal="${course.id}">Enroll in this course</button>
-          <button type="button" class="secondary" id="closeModalSecondary">Close</button>
-        </div>
-      `;
-      document.getElementById('closeModal').onclick = () => modal.classList.remove('show');
-      document.getElementById('closeModalSecondary').onclick = () => modal.classList.remove('show');
-      const enrollButton = document.querySelector('[data-enroll-course-modal]');
-      enrollButton.addEventListener('click', async () => {
-        await enrollCourse(course.id);
-        modal.classList.remove('show');
-      });
-      modal.classList.add('show');
-    }
-
-    async function enrollCourse(courseId) {
-      try {
-        const response = await authorizedFetch(`${API_BASE}/api/courses/${encodeURIComponent(courseId)}/enroll`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          const missing = data.missingPrerequisites ? ` Missing: ${data.missingPrerequisites.join(', ')}` : '';
-          showToast(`${data.message || 'Enrollment blocked.'}${missing}`, 'error');
-          return;
-        }
-
-        showToast(data.message || 'Course successfully added!');
-        await loadDashboard();
-      } catch (error) {
-        showToast('Enrollment failed. Please try again.', 'error');
-      }
-    }
-
     async function loadDashboard() {
       try {
         if (!hasStudentAccess) return;
         const response = await authorizedFetch(`${API_BASE}/api/student-dashboard/${encodeURIComponent(studentId)}`);
         if (!response.ok) throw new Error('Dashboard not available');
         const data = await response.json();
+        dashboardData = data;
         const student = data.student;
         document.getElementById('studentNameHeading').textContent = student.name;
         document.getElementById('studentMeta').textContent = `${student.program} • Semester ${student.semester}`;
@@ -463,13 +327,12 @@
         document.getElementById('feeDueDate').textContent = fee.dueDate || '—';
 
         renderStats(student);
-        renderRecommendations(data.recommendations || []);
         renderAnnouncements(data.announcements || []);
         renderMyCourses(data.myCourses || []);
         renderAttendance(data.attendance || []);
         renderResults(data.results || []);
         renderTimetable(data.timetable || []);
-        renderProgress(student, data.courses || []);
+        renderProgress(student);
         document.title = `${student.name} | Student Portal`;
       } catch (error) {
         document.getElementById('studentNameHeading').textContent = 'No data available';
@@ -477,40 +340,18 @@
       }
     }
 
-    document.getElementById('nextCourseBtn').addEventListener('click', async () => {
-      try {
-        const response = await authorizedFetch(`${API_BASE}/api/next-courses/${encodeURIComponent(studentId)}`);
-        const data = await response.json();
-        const list = data.map((course) => `
-          <div class="mini-item">
-            <strong>${course.name}</strong>
-            <div class="muted">${course.matchScore}% Match</div>
-            <div class="muted">${course.explanation}</div>
-          </div>
-        `).join('');
-        recommendationsContainer.innerHTML = list || '<div class="empty">No next recommended courses found.</div>';
-        showToast('Your next course recommendations are ready.');
-      } catch (error) {
-        showToast('Could not generate the next-course recommendation.', 'error');
-      }
-    });
-
-    searchInput.addEventListener('input', async () => {
-      const query = searchInput.value.trim();
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.trim().toLowerCase();
+      if (!dashboardData) return;
       if (!query) {
-        await loadDashboard();
+        renderMyCourses(dashboardData.myCourses || []);
+        renderAnnouncements(dashboardData.announcements || []);
         return;
       }
-
-      const response = await authorizedFetch(`${API_BASE}/api/student-dashboard/${encodeURIComponent(studentId)}`);
-      const data = await response.json();
-      const filtered = (data.recommendations || []).filter((course) => `${course.name} ${course.code} ${course.description}`.toLowerCase().includes(query.toLowerCase()));
-      renderRecommendations(filtered);
-    });
-
-    document.getElementById('closeModal').addEventListener('click', () => modal.classList.remove('show'));
-    modal.addEventListener('click', (event) => {
-      if (event.target === modal) modal.classList.remove('show');
+      renderMyCourses((dashboardData.myCourses || []).filter((course) =>
+        `${course.name} ${course.code} ${course.instructor}`.toLowerCase().includes(query)));
+      renderAnnouncements((dashboardData.announcements || []).filter((item) =>
+        `${item.title} ${item.message}`.toLowerCase().includes(query)));
     });
 
     loadDashboard();
