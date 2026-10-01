@@ -5,25 +5,264 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CampusDesk | Student Management</title>
   <style>
-    :root { --ink:#172033; --blue:#2563eb; --green:#16a34a; --muted:#687386; --line:#e3e8f1; }
-    * { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; color:var(--ink); background:linear-gradient(135deg,#eef5ff 0%,#fff 55%,#ecfdf5 100%); font-family:Georgia,'Times New Roman',serif; }
-    .page { max-width:1120px; margin:auto; padding:28px 5% 55px; }
-    header { display:flex; justify-content:space-between; align-items:center; }
-    .brand { font-size:25px; font-weight:bold; } .brand span { color:var(--blue); }
-    nav { display:flex; gap:20px; } nav a { color:var(--ink); font:600 14px Arial,sans-serif; text-decoration:none; } nav a:hover { color:var(--blue); }
-    .hero { max-width:720px; padding:105px 0 80px; } .eyebrow { color:var(--blue); font:700 12px Arial,sans-serif; letter-spacing:2px; text-transform:uppercase; }
-    h1 { margin:12px 0 20px; font-size:clamp(42px,7vw,76px); line-height:1.02; } .lead { max-width:580px; color:var(--muted); font:18px/1.6 Arial,sans-serif; }
-    .actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:30px; } .button { display:inline-block; padding:14px 23px; border-radius:8px; color:#fff; font:700 15px Arial,sans-serif; text-decoration:none; } .primary { background:var(--blue); } .secondary { background:var(--green); } .button:hover { filter:brightness(.92); }
-    .portals { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; max-width:760px; } .portal { padding:22px; background:rgba(255,255,255,.75); border:1px solid var(--line); border-radius:12px; } .portal h2 { margin:0 0 8px; font-size:22px; } .portal p { margin:0 0 16px; color:var(--muted); font:14px/1.5 Arial,sans-serif; } .portal a { color:var(--blue); font:700 14px Arial,sans-serif; text-decoration:none; }
-    @media(max-width:620px) { header{align-items:flex-start} nav{flex-direction:column;gap:8px;text-align:right}.hero{padding:75px 0 55px}.portals{grid-template-columns:1fr}h1{font-size:46px}.lead{font-size:16px} }
+    :root {
+      --ink: #0f172a;
+      --muted: #5b6577;
+      --blue: #2f6af5;
+      --blue-dark: #1d4ed8;
+      --green: #17a36a;
+      --line: #e3e8f1;
+      --panel: #ffffff;
+      --shadow: 0 20px 48px rgba(24, 39, 75, 0.12);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: #f6f8fc;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      line-height: 1.5;
+    }
+    .page { max-width: 1160px; margin: auto; padding: 0 5% 70px; }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 22px 0;
+      position: sticky;
+      top: 0;
+      background: rgba(246, 248, 252, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 10;
+    }
+    .brand { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+    .brand span { color: var(--blue); }
+    nav { display: flex; align-items: center; gap: 22px; }
+    nav a { color: var(--ink); font: 600 14px/1 inherit; text-decoration: none; }
+    nav a:hover { color: var(--blue); }
+    nav a.nav-cta { background: var(--blue); color: #fff; padding: 10px 18px; border-radius: 999px; }
+    nav a.nav-cta:hover { background: var(--blue-dark); }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      align-items: center;
+      gap: 40px;
+      padding: 70px 0 60px;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--blue);
+      font: 700 12px/1 Arial, sans-serif;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      background: rgba(47, 106, 245, 0.08);
+      padding: 8px 14px;
+      border-radius: 999px;
+    }
+    h1 { margin: 18px 0 18px; font-size: clamp(36px, 5vw, 58px); line-height: 1.08; letter-spacing: -1.4px; }
+    h1 .accent { color: var(--blue); }
+    .lead { max-width: 520px; color: var(--muted); font-size: 17px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 32px; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 15px 24px;
+      border-radius: 10px;
+      color: #fff;
+      font: 700 15px/1 Arial, sans-serif;
+      text-decoration: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+    }
+    .primary { background: linear-gradient(135deg, var(--blue), #4a8af6); box-shadow: 0 14px 26px rgba(47, 106, 245, 0.28); }
+    .secondary { background: #fff; color: var(--ink); border: 1px solid var(--line); box-shadow: 0 6px 16px rgba(24, 39, 75, 0.06); }
+    .button:hover { transform: translateY(-2px); filter: brightness(1.02); }
+    .trust-row { display: flex; gap: 26px; margin-top: 38px; flex-wrap: wrap; }
+    .trust-row div small { display: block; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; }
+    .trust-row div strong { font-size: 22px; }
+
+    .hero-visual {
+      position: relative;
+      padding: 30px;
+    }
+    .hero-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 26px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero-card .row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+    .hero-card .row:last-child { border-bottom: none; }
+    .hero-card .row small { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; }
+    .hero-card .row strong { font-size: 16px; }
+    .hero-card .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; background: rgba(23, 163, 106, 0.12); color: var(--green); }
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(10px);
+      opacity: 0.5;
+      z-index: 0;
+    }
+    .blob-1 { width: 220px; height: 220px; background: #bcd3ff; top: -30px; right: -20px; }
+    .blob-2 { width: 160px; height: 160px; background: #bdf0d8; bottom: -20px; left: -10px; }
+
+    .section-heading { text-align: center; max-width: 620px; margin: 0 auto 36px; }
+    .section-heading .eyebrow { margin-bottom: 14px; }
+    .section-heading h2 { margin: 0 0 10px; font-size: clamp(26px, 3vw, 34px); letter-spacing: -0.8px; }
+    .section-heading p { color: var(--muted); margin: 0; }
+
+    .features { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; padding: 50px 0; }
+    .feature-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 22px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .feature-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+    .feature-icon { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; margin-bottom: 14px; }
+    .feature-card h3 { margin: 0 0 8px; font-size: 16px; }
+    .feature-card p { margin: 0; color: var(--muted); font-size: 13.5px; }
+
+    .portals { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; padding: 10px 0 50px; }
+    .portal {
+      padding: 30px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+    .portal::after {
+      content: "";
+      position: absolute;
+      width: 140px; height: 140px;
+      border-radius: 50%;
+      right: -40px; bottom: -50px;
+      background: rgba(47, 106, 245, 0.07);
+    }
+    .portal .portal-icon { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: rgba(47, 106, 245, 0.1); color: var(--blue); margin-bottom: 16px; }
+    .portal h2 { margin: 0 0 8px; font-size: 21px; }
+    .portal p { margin: 0 0 18px; color: var(--muted); font-size: 14.5px; max-width: 320px; }
+    .portal a.link { color: var(--blue); font: 700 14px Arial, sans-serif; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .portal a.link:hover { text-decoration: underline; }
+
+    footer { border-top: 1px solid var(--line); padding: 26px 0; display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 13px; flex-wrap: wrap; gap: 10px; }
+    footer a { color: var(--muted); text-decoration: none; margin-left: 16px; }
+    footer a:hover { color: var(--blue); }
+
+    @media (max-width: 860px) {
+      .hero { grid-template-columns: 1fr; padding-top: 40px; }
+      .features { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 620px) {
+      nav { gap: 12px; }
+      nav a.nav-cta { padding: 8px 14px; }
+      .hero { padding: 30px 0 40px; }
+      .features { grid-template-columns: 1fr; }
+      .portals { grid-template-columns: 1fr; }
+      .trust-row { gap: 18px; }
+      footer { flex-direction: column; align-items: flex-start; }
+      footer a { margin-left: 0; margin-right: 16px; }
+    }
   </style>
 </head>
 <body>
   <main class="page">
-    <header><div class="brand">Campus<span>Desk</span></div><nav><a href="/login">Login</a><a href="/signup">Sign up</a></nav></header>
-    <section class="hero"><div class="eyebrow">Student management, made simple</div><h1>Everything your campus needs, in one place.</h1><p class="lead">A focused workspace for student records, classes, subjects, profiles, and fee management.</p><div class="actions"><a class="button primary" href="/login">Login to portal</a><a class="button secondary" href="/signup">Create an account</a></div></section>
-    <section class="portals"><article class="portal"><h2>Admin portal</h2><p>Manage students, classes, fees, and individual student dashboards.</p><a href="/admin">Open admin portal &#8594;</a></article><article class="portal"><h2>Student portal</h2><p>View registered student records and academic profile information.</p><a href="/student-portal">Open student portal &#8594;</a></article></section>
+    <header>
+      <div class="brand">Campus<span>Desk</span></div>
+      <nav>
+        <a href="/login">Login</a>
+        <a href="/signup">Sign up</a>
+        <a class="nav-cta" href="/login">Get started</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Student management, made simple</div>
+        <h1>Everything your campus needs, <span class="accent">in one place.</span></h1>
+        <p class="lead">A focused workspace for student enrollment, secure logins, attendance, results, timetables, and fee management — built for admins and students alike.</p>
+        <div class="actions">
+          <a class="button primary" href="/login">Login to portal</a>
+          <a class="button secondary" href="/signup">Create an account</a>
+        </div>
+        <div class="trust-row">
+          <div><strong>Role-based</strong><small>Admin &amp; student access</small></div>
+          <div><strong>Secure</strong><small>Hashed credentials</small></div>
+          <div><strong>Own data only</strong><small>Backend-enforced</small></div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="hero-card">
+          <div class="row"><small>Student</small><strong>Your name here</strong></div>
+          <div class="row"><small>Program</small><strong>Your program</strong></div>
+          <div class="row"><small>Attendance</small><strong>Real-time</strong></div>
+          <div class="row"><small>Fee status</small><span class="badge">Up to date</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-heading">
+      <div class="eyebrow">Why CampusDesk</div>
+      <h2>Everything admins and students need</h2>
+      <p>One login, one dashboard — no spreadsheets, no guesswork.</p>
+    </section>
+
+    <section class="features">
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(47,106,245,0.1); color: var(--blue);">🔐</div>
+        <h3>Secure logins</h3>
+        <p>Auto-generated credentials with hashed passwords and mandatory first-login password reset.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(23,163,106,0.1); color: var(--green);">🎓</div>
+        <h3>Student profiles</h3>
+        <p>Program, semester, student ID, and academic details — always scoped to the logged-in account.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(240,173,78,0.15); color: #bd7d0a;">📅</div>
+        <h3>Attendance &amp; timetable</h3>
+        <p>Students see their own classes and attendance record — nothing more, nothing less.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(239,93,93,0.1); color: var(--danger, #ef5d5d);">💳</div>
+        <h3>Fees &amp; results</h3>
+        <p>Transparent fee breakdowns and grade records tied to each individual student.</p>
+      </div>
+    </section>
+
+    <section class="portals">
+      <article class="portal">
+        <div class="portal-icon">🛠️</div>
+        <h2>Admin portal</h2>
+        <p>Enroll students, generate login credentials, and manage records across the whole campus.</p>
+        <a class="link" href="/admin">Open admin portal &#8594;</a>
+      </article>
+      <article class="portal">
+        <div class="portal-icon">🎒</div>
+        <h2>Student portal</h2>
+        <p>View your own profile, enrolled courses, attendance, results, and fee status after logging in.</p>
+        <a class="link" href="/student-portal">Open student portal &#8594;</a>
+      </article>
+    </section>
+
+    <footer>
+      <div>© 2026 CampusDesk. All rights reserved.</div>
+      <div><a href="/login">Login</a><a href="/signup">Sign up</a></div>
+    </footer>
   </main>
 </body>
 </html>
