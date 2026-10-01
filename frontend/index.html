@@ -10,13 +10,9 @@
       --muted: #5b6577;
       --blue: #2f6af5;
       --blue-dark: #1d4ed8;
-      --green: #17a36a;
       --line: #e3e8f1;
-      --panel: #ffffff;
-      --shadow: 0 20px 48px rgba(24, 39, 75, 0.12);
     }
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
     body {
       margin: 0;
       min-height: 100vh;
@@ -25,38 +21,17 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
       line-height: 1.5;
     }
-    .page { max-width: 1160px; margin: auto; padding: 0 5% 70px; }
+    .page { max-width: 760px; margin: auto; padding: 0 5%; min-height: 100vh; display: flex; flex-direction: column; }
 
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 22px 0;
-      position: sticky;
-      top: 0;
-      background: rgba(246, 248, 252, 0.85);
-      backdrop-filter: blur(8px);
-      z-index: 10;
-    }
-    .brand { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 24px 0; }
+    .brand { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
     .brand span { color: var(--blue); }
-    nav { display: flex; align-items: center; gap: 22px; }
-    nav a { color: var(--ink); font: 600 14px/1 inherit; text-decoration: none; }
-    nav a:hover { color: var(--blue); }
-    nav a.nav-cta { background: var(--blue); color: #fff; padding: 10px 18px; border-radius: 999px; }
+    nav a.nav-cta { background: var(--blue); color: #fff; padding: 10px 18px; border-radius: 999px; font: 700 14px/1 inherit; text-decoration: none; }
     nav a.nav-cta:hover { background: var(--blue-dark); }
 
-    .hero {
-      display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      align-items: center;
-      gap: 40px;
-      padding: 70px 0 60px;
-    }
+    .hero { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 40px 0 80px; text-align: center; }
     .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
+      align-self: center;
       color: var(--blue);
       font: 700 12px/1 Arial, sans-serif;
       letter-spacing: 1.6px;
@@ -65,114 +40,27 @@
       padding: 8px 14px;
       border-radius: 999px;
     }
-    h1 { margin: 18px 0 18px; font-size: clamp(36px, 5vw, 58px); line-height: 1.08; letter-spacing: -1.4px; }
+    h1 { margin: 18px 0; font-size: clamp(32px, 6vw, 48px); line-height: 1.1; letter-spacing: -1.2px; }
     h1 .accent { color: var(--blue); }
-    .lead { max-width: 520px; color: var(--muted); font-size: 17px; }
-    .actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 32px; }
+    .lead { max-width: 480px; margin: 0 auto; color: var(--muted); font-size: 16px; }
+    .actions { display: flex; justify-content: center; margin-top: 28px; }
     .button {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 15px 24px;
+      display: inline-block;
+      padding: 15px 30px;
       border-radius: 10px;
       color: #fff;
+      background: linear-gradient(135deg, var(--blue), #4a8af6);
       font: 700 15px/1 Arial, sans-serif;
       text-decoration: none;
-      transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+      box-shadow: 0 14px 26px rgba(47, 106, 245, 0.28);
+      transition: transform 0.15s ease;
     }
-    .primary { background: linear-gradient(135deg, var(--blue), #4a8af6); box-shadow: 0 14px 26px rgba(47, 106, 245, 0.28); }
-    .button:hover { transform: translateY(-2px); filter: brightness(1.02); }
-    .trust-row { display: flex; gap: 26px; margin-top: 38px; flex-wrap: wrap; }
-    .trust-row div small { display: block; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; }
-    .trust-row div strong { font-size: 22px; }
+    .button:hover { transform: translateY(-2px); }
 
-    .hero-visual {
-      position: relative;
-      padding: 30px;
-    }
-    .hero-card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      box-shadow: var(--shadow);
-      padding: 26px;
-      position: relative;
-      z-index: 1;
-    }
-    .hero-card .row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
-    .hero-card .row:last-child { border-bottom: none; }
-    .hero-card .row small { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; }
-    .hero-card .row strong { font-size: 16px; }
-    .hero-card .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; background: rgba(23, 163, 106, 0.12); color: var(--green); }
-    .blob {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(10px);
-      opacity: 0.5;
-      z-index: 0;
-    }
-    .blob-1 { width: 220px; height: 220px; background: #bcd3ff; top: -30px; right: -20px; }
-    .blob-2 { width: 160px; height: 160px; background: #bdf0d8; bottom: -20px; left: -10px; }
+    footer { border-top: 1px solid var(--line); padding: 20px 0; text-align: center; color: var(--muted); font-size: 13px; }
 
-    .section-heading { text-align: center; max-width: 620px; margin: 0 auto 36px; }
-    .section-heading .eyebrow { margin-bottom: 14px; }
-    .section-heading h2 { margin: 0 0 10px; font-size: clamp(26px, 3vw, 34px); letter-spacing: -0.8px; }
-    .section-heading p { color: var(--muted); margin: 0; }
-
-    .features { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; padding: 50px 0; }
-    .feature-card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 22px;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-    .feature-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
-    .feature-icon { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 20px; margin-bottom: 14px; }
-    .feature-card h3 { margin: 0 0 8px; font-size: 16px; }
-    .feature-card p { margin: 0; color: var(--muted); font-size: 13.5px; }
-
-    .portals { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; padding: 10px 0 50px; }
-    .portal {
-      padding: 30px;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      box-shadow: var(--shadow);
-      position: relative;
-      overflow: hidden;
-    }
-    .portal::after {
-      content: "";
-      position: absolute;
-      width: 140px; height: 140px;
-      border-radius: 50%;
-      right: -40px; bottom: -50px;
-      background: rgba(47, 106, 245, 0.07);
-    }
-    .portal .portal-icon { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: rgba(47, 106, 245, 0.1); color: var(--blue); margin-bottom: 16px; }
-    .portal h2 { margin: 0 0 8px; font-size: 21px; }
-    .portal p { margin: 0 0 18px; color: var(--muted); font-size: 14.5px; max-width: 320px; }
-    .portal a.link { color: var(--blue); font: 700 14px Arial, sans-serif; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
-    .portal a.link:hover { text-decoration: underline; }
-
-    footer { border-top: 1px solid var(--line); padding: 26px 0; display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 13px; flex-wrap: wrap; gap: 10px; }
-    footer a { color: var(--muted); text-decoration: none; margin-left: 16px; }
-    footer a:hover { color: var(--blue); }
-
-    @media (max-width: 860px) {
-      .hero { grid-template-columns: 1fr; padding-top: 40px; }
-      .features { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (max-width: 620px) {
-      nav { gap: 12px; }
-      nav a.nav-cta { padding: 8px 14px; }
-      .hero { padding: 30px 0 40px; }
-      .features { grid-template-columns: 1fr; }
-      .portals { grid-template-columns: 1fr; }
-      .trust-row { gap: 18px; }
-      footer { flex-direction: column; align-items: flex-start; }
-      footer a { margin-left: 0; margin-right: 16px; }
+    @media (max-width: 480px) {
+      header { flex-direction: column; gap: 12px; }
     }
   </style>
 </head>
@@ -186,79 +74,15 @@
     </header>
 
     <section class="hero">
-      <div>
-        <div class="eyebrow">Student management, made simple</div>
-        <h1>Everything your campus needs, <span class="accent">in one place.</span></h1>
-        <p class="lead">A focused workspace for student enrollment, secure logins, attendance, results, timetables, and fee management. Admins enroll students and issue their login credentials — there's no self-signup.</p>
-        <div class="actions">
-          <a class="button primary" href="/login">Login to portal</a>
-        </div>
-        <div class="trust-row">
-          <div><strong>Role-based</strong><small>Admin &amp; student access</small></div>
-          <div><strong>Secure</strong><small>Hashed credentials</small></div>
-          <div><strong>Own data only</strong><small>Backend-enforced</small></div>
-        </div>
-      </div>
-      <div class="hero-visual">
-        <div class="blob blob-1"></div>
-        <div class="blob blob-2"></div>
-        <div class="hero-card">
-          <div class="row"><small>Student</small><strong>Your name here</strong></div>
-          <div class="row"><small>Program</small><strong>Your program</strong></div>
-          <div class="row"><small>Attendance</small><strong>Real-time</strong></div>
-          <div class="row"><small>Fee status</small><span class="badge">Up to date</span></div>
-        </div>
+      <div class="eyebrow">Student management, made simple</div>
+      <h1>Everything your campus needs, <span class="accent">in one place.</span></h1>
+      <p class="lead">Admins enroll students and issue their login credentials. Students sign in with the email and password they're given — there's no self-signup.</p>
+      <div class="actions">
+        <a class="button" href="/login">Login to portal</a>
       </div>
     </section>
 
-    <section class="section-heading">
-      <div class="eyebrow">Why CampusDesk</div>
-      <h2>Everything admins and students need</h2>
-      <p>One login, one dashboard — no spreadsheets, no guesswork.</p>
-    </section>
-
-    <section class="features">
-      <div class="feature-card">
-        <div class="feature-icon" style="background: rgba(47,106,245,0.1); color: var(--blue);">🔐</div>
-        <h3>Secure logins</h3>
-        <p>Auto-generated credentials with hashed passwords and mandatory first-login password reset.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon" style="background: rgba(23,163,106,0.1); color: var(--green);">🎓</div>
-        <h3>Student profiles</h3>
-        <p>Program, semester, student ID, and academic details — always scoped to the logged-in account.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon" style="background: rgba(240,173,78,0.15); color: #bd7d0a;">📅</div>
-        <h3>Attendance &amp; timetable</h3>
-        <p>Students see their own classes and attendance record — nothing more, nothing less.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon" style="background: rgba(239,93,93,0.1); color: var(--danger, #ef5d5d);">💳</div>
-        <h3>Fees &amp; results</h3>
-        <p>Transparent fee breakdowns and grade records tied to each individual student.</p>
-      </div>
-    </section>
-
-    <section class="portals">
-      <article class="portal">
-        <div class="portal-icon">🛠️</div>
-        <h2>Admin portal</h2>
-        <p>Enroll students, generate login credentials, and manage records across the whole campus.</p>
-        <a class="link" href="/admin">Open admin portal &#8594;</a>
-      </article>
-      <article class="portal">
-        <div class="portal-icon">🎒</div>
-        <h2>Student portal</h2>
-        <p>View your own profile, enrolled courses, attendance, results, and fee status after logging in.</p>
-        <a class="link" href="/student-portal">Open student portal &#8594;</a>
-      </article>
-    </section>
-
-    <footer>
-      <div>© 2026 CampusDesk. All rights reserved.</div>
-      <div><a href="/login">Login</a></div>
-    </footer>
+    <footer>© 2026 CampusDesk. All rights reserved.</footer>
   </main>
 </body>
 </html>

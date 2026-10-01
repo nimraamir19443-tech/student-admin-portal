@@ -116,6 +116,15 @@ if (process.env.NODE_ENV === "production" && (
 }
 const tokenSecret = configuredTokenSecret || crypto.randomBytes(32).toString("hex");
 
+const DEFAULT_ADMIN_EMAIL = "admin@campusdesk.local";
+const DEFAULT_ADMIN_PASSWORD = "Admin@12345";
+const usingDefaultAdminCredentials = process.env.NODE_ENV !== "production" && !(configuredAdminEmail && configuredAdminPasswordHash);
+const effectiveAdminEmail = configuredAdminEmail || (usingDefaultAdminCredentials ? DEFAULT_ADMIN_EMAIL : "");
+const effectiveAdminPasswordHash = configuredAdminPasswordHash || (usingDefaultAdminCredentials ? bcrypt.hashSync(DEFAULT_ADMIN_PASSWORD, 10) : "");
+if (usingDefaultAdminCredentials) {
+    console.log(`No ADMIN_EMAIL/ADMIN_PASSWORD_HASH set. Using default admin login for local use: ${DEFAULT_ADMIN_EMAIL} / ${DEFAULT_ADMIN_PASSWORD}`);
+}
+
 function issueToken(user) {
     const payload = Buffer.from(JSON.stringify({
         ...user,
@@ -835,8 +844,8 @@ app.post("/login", async (req, res) => {
         return res.status(400).json({ message: "Please enter email and password." });
     }
 
-    const adminEmail = String(process.env.ADMIN_EMAIL || "").trim().toLowerCase();
-    const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH || "";
+    const adminEmail = effectiveAdminEmail;
+    const adminPasswordHash = effectiveAdminPasswordHash;
     if (adminEmail && adminPasswordHash && normalizedEmail === adminEmail && await bcrypt.compare(password, adminPasswordHash)) {
         const admin = { id: "admin", name: "Administrator", email: adminEmail, role: "ADMIN", mustChangePassword: false };
         return res.json({
