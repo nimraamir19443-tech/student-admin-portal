@@ -4,6 +4,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { after, before, describe, it } = require("node:test");
 const bcrypt = require("bcryptjs");
+const User = require("./models/User");
 
 const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "campusdesk-auth-test-"));
 const studentsPath = path.join(tempDirectory, "students.json");
@@ -48,6 +49,21 @@ fs.writeFileSync(portalDataPath, JSON.stringify({
 const app = require("./server");
 let server;
 let baseUrl;
+
+describe("Mongoose admin user model", () => {
+    it("hashes the password before save and compares credentials with bcrypt", async () => {
+        const user = new User({ email: "admin@campusdesk.local", password: "admin123", role: "admin" });
+        await new Promise((resolve, reject) => {
+            User.schema.s.hooks.execPre("save", user, (error) => error ? reject(error) : resolve());
+        });
+
+        assert.notEqual(user.password, "admin123");
+        assert.match(user.password, /^\$2[aby]\$\d{2}\$/);
+        assert.equal(user.role, "admin");
+        assert.equal(await user.comparePassword("admin123"), true);
+        assert.equal(await user.comparePassword("wrong"), false);
+    });
+});
 
 async function request(endpoint, { method = "GET", body, token } = {}) {
     const headers = {};

@@ -5,6 +5,10 @@ const path = require("path");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const { Pool } = require("pg");
+const mongoose = require("mongoose");
+const connectDB = require("./db");
+const seedAdminUser = require("./seedAdmin");
+const User = require("./models/User");
 
 const app = express();
 const dataFilePath = process.env.STUDENTS_FILE_PATH || path.join(__dirname, "students.json");
@@ -109,15 +113,17 @@ if (configuredTokenSecret && Buffer.byteLength(configuredTokenSecret) < 32) {
 }
 if (process.env.NODE_ENV === "production" && (
     !configuredTokenSecret ||
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(configuredAdminEmail) ||
-    !/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(configuredAdminPasswordHash)
+    (!process.env.MONGODB_URI && (
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(configuredAdminEmail) ||
+        !/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(configuredAdminPasswordHash)
+    ))
 )) {
-    throw new Error("Production requires AUTH_TOKEN_SECRET, a valid ADMIN_EMAIL, and a bcrypt ADMIN_PASSWORD_HASH.");
+    throw new Error("Production requires AUTH_TOKEN_SECRET and either MONGODB_URI or a valid ADMIN_EMAIL and bcrypt ADMIN_PASSWORD_HASH.");
 }
 const tokenSecret = configuredTokenSecret || crypto.randomBytes(32).toString("hex");
 
 const DEFAULT_ADMIN_EMAIL = "admin@campusdesk.local";
-const DEFAULT_ADMIN_PASSWORD = "Admin@12345";
+const DEFAULT_ADMIN_PASSWORD = "admin123";
 const usingDefaultAdminCredentials = process.env.NODE_ENV !== "production" && !(configuredAdminEmail && configuredAdminPasswordHash);
 const effectiveAdminEmail = configuredAdminEmail || (usingDefaultAdminCredentials ? DEFAULT_ADMIN_EMAIL : "");
 const effectiveAdminPasswordHash = configuredAdminPasswordHash || (usingDefaultAdminCredentials ? bcrypt.hashSync(DEFAULT_ADMIN_PASSWORD, 10) : "");
@@ -844,6 +850,25 @@ app.post("/login", async (req, res) => {
         return res.status(400).json({ message: "Please enter email and password." });
     }
 
+    if (mongoose.connection.readyState === 1) {
+        try {
+            const databaseAdmin = await User.findOne({ email: normalizedEmail }).select("+password");
+            if (databaseAdmin && await databaseAdmin.comparePassword(password)) {
+                const admin = {
+                    id: String(databaseAdmin._id),
+                    name: "Administrator",
+                    email: databaseAdmin.email,
+                    role: "ADMIN",
+                    mustChangePassword: false
+                };
+                return res.json({ message: "Login successful!", student: admin, accessToken: issueToken(admin) });
+            }
+        } catch (error) {
+            console.error("MongoDB admin login error:", error.message);
+            return res.status(500).json({ message: "Unable to verify login right now." });
+        }
+    }
+
     const adminEmail = effectiveAdminEmail;
     const adminPasswordHash = effectiveAdminPasswordHash;
     if (adminEmail && adminPasswordHash && normalizedEmail === adminEmail && await bcrypt.compare(password, adminPasswordHash)) {
@@ -874,7 +899,7 @@ app.post("/login", async (req, res) => {
     }
 
     if (!pool) {
-        return res.status(401).json({ message: "Invalid email or password." });
+        return res.status(401).json({ message: "Invalid email or password" });
     }
 
     try {
@@ -882,13 +907,13 @@ app.post("/login", async (req, res) => {
         const result = await pool.query("SELECT * FROM students WHERE LOWER(email) = LOWER($1)", [normalizedEmail]);
 
         if (result.rows.length === 0) {
-            return res.status(401).json({ message: "Invalid email or password." });
+            return res.status(401).json({ message: "Invalid email or password" });
         }
 
         const student = result.rows[0];
 
         if (!await bcrypt.compare(password, student.password)) {
-            return res.status(401).json({ message: "Invalid email or password." });
+            return res.status(401).json({ message: "Invalid email or password" });
         }
 
         res.json({
@@ -981,9 +1006,16 @@ app.get("/api/database-status", async (req, res) => {
 const port = process.env.PORT || 3000;
 
 if (require.main === module) {
-    app.listen(port, "0.0.0.0", () => {
-        console.log(`CampusDesk backend running on port ${port}`);
-    });
+    (async () => {
+        try {
+            if (await connectDB()) await seedAdminUser();
+        } catch (error) {
+            console.error("MongoDB admin setup failed:", error.message);
+        }
+        app.listen(port, "0.0.0.0", () => {
+            console.log(`CampusDesk backend running on port ${port}`);
+        });
+    })();
 }
 
 module.exports = app;
