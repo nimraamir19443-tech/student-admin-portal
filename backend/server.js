@@ -222,8 +222,8 @@ async function saveStudentAccounts(accounts) {
             for (const account of accounts) {
                 await client.query(
                     `INSERT INTO students (name, student_id, roll_number, email, password, role, must_change_password)
-                    VALUES ($1, $2, $2, $3, $4, 'STUDENT', TRUE)`,
-                    [account.name, account.studentId, account.email, account.passwordHash]
+                    VALUES ($1, $2, $3, $4, $5, 'STUDENT', TRUE)`,
+                    [account.name, account.studentId, account.studentId, account.email, account.passwordHash]
                 );
             }
             await client.query("COMMIT");
