@@ -190,7 +190,7 @@ describe("admin-created student accounts", () => {
         });
         assert.equal(oldPasswordLogin.response.status, 401);
 
-        const deleted = await request(`/api/admin/students/${encodeURIComponent(created.data.student.id)}`, {
+        const deleted = await request(`/api/admin/students/${encodeURIComponent(created.data.student.studentId)}`, {
             method: "DELETE",
             token: adminLogin.data.accessToken
         });

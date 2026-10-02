@@ -807,28 +807,54 @@ app.post("/api/admin/students/bulk", requireAuth, requireRole("ADMIN"), async (r
 });
 
 app.delete("/api/admin/students/:id", requireAuth, requireRole("ADMIN"), async (req, res) => {
-    const studentId = Number(req.params.id);
+    const requestedIdentifier = String(req.params.id || "").trim();
     const data = readPortalData();
     const students = data.students || [];
-    const removedStudent = students.find((student) => String(student.id) === String(studentId));
-    if (!removedStudent) {
-        return res.status(404).json({ message: "Student not found." });
-    }
+    let removedStudent = students.find((student) =>
+        String(student.id) === requestedIdentifier ||
+        String(student.studentId || "").toLowerCase() === requestedIdentifier.toLowerCase()
+    );
 
     try {
         if (pool) {
             await databaseReady;
+            if (!removedStudent) {
+                const byStudentId = await pool.query(
+                    "SELECT id, student_id, roll_number FROM students WHERE LOWER(student_id) = LOWER($1) OR LOWER(roll_number) = LOWER($2) LIMIT 1",
+                    [requestedIdentifier, requestedIdentifier]
+                );
+                let databaseStudent = byStudentId.rows[0];
+                if (!databaseStudent && /^\d+$/.test(requestedIdentifier)) {
+                    const byDatabaseId = await pool.query(
+                        "SELECT id, student_id, roll_number FROM students WHERE id = $1 LIMIT 1",
+                        [requestedIdentifier]
+                    );
+                    databaseStudent = byDatabaseId.rows[0];
+                }
+                if (databaseStudent) {
+                    removedStudent = {
+                        id: databaseStudent.id,
+                        studentId: databaseStudent.student_id || databaseStudent.roll_number
+                    };
+                }
+            }
+            if (!removedStudent) return res.status(404).json({ message: "Student not found." });
             await pool.query(
                 "DELETE FROM students WHERE LOWER(student_id) = LOWER($1) OR LOWER(roll_number) = LOWER($2)",
                 [removedStudent.studentId, removedStudent.studentId]
             );
+        } else if (!removedStudent) {
+            return res.status(404).json({ message: "Student not found." });
         }
         const accounts = readStudents().filter((student) =>
-            String(student.id) !== String(studentId) &&
+            String(student.id) !== String(removedStudent.id) &&
             String(student.studentId || "").toLowerCase() !== String(removedStudent.studentId || "").toLowerCase()
         );
         writeStudents(accounts);
-        data.students = students.filter((student) => String(student.id) !== String(studentId));
+        data.students = students.filter((student) =>
+            String(student.id) !== String(removedStudent.id) &&
+            String(student.studentId || "").toLowerCase() !== String(removedStudent.studentId || "").toLowerCase()
+        );
         writePortalData(data);
         res.json({ message: "Student deleted successfully." });
     } catch (error) {
