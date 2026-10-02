@@ -189,5 +189,11 @@ describe("admin-created student accounts", () => {
             body: { email: created.data.credentials.email, password: created.data.credentials.password }
         });
         assert.equal(oldPasswordLogin.response.status, 401);
+
+        const deleted = await request(`/api/admin/students/${encodeURIComponent(created.data.student.id)}`, {
+            method: "DELETE",
+            token: adminLogin.data.accessToken
+        });
+        assert.equal(deleted.response.status, 200);
     });
 });

@@ -818,7 +818,10 @@ app.delete("/api/admin/students/:id", requireAuth, requireRole("ADMIN"), async (
     try {
         if (pool) {
             await databaseReady;
-            await pool.query("DELETE FROM students WHERE id = $1 OR LOWER(student_id) = LOWER($2)", [studentId, removedStudent.studentId]);
+            await pool.query(
+                "DELETE FROM students WHERE LOWER(student_id) = LOWER($1) OR LOWER(roll_number) = LOWER($2)",
+                [removedStudent.studentId, removedStudent.studentId]
+            );
         }
         const accounts = readStudents().filter((student) =>
             String(student.id) !== String(studentId) &&
