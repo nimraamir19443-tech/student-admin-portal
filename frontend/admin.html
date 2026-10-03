@@ -367,7 +367,7 @@
           <td><button class="delete-btn" type="button" data-student-id="${student.id}">Delete</button></td>
         </tr>
         `;
-      }).join('') : '<tr><td colspan="8"><div class="empty">No students match your filters.</div></td></tr>';
+      }).join('') : '<tr><td colspan="8"><div class="empty">' + ((data.students || []).length ? 'No students match your search.' : 'No students have been added yet. Use "Add student" to admit the first one.') + '</div></td></tr>';
     }
 
     function renderAdmissions(data) {
@@ -436,6 +436,7 @@
         }
 
         const overview = await overviewResponse.json();
+        console.log('Admin overview response:', overview, `students: ${(overview.students || []).length}`);
         renderStats(overview);
         renderStudents(overview);
         renderAdmissions(overview);

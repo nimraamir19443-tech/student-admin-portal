@@ -281,8 +281,47 @@ function writeClasses(classes) {
     writeJson(classesFilePath, classes);
 }
 
+let portalCache = null;
+let portalPersistChain = Promise.resolve();
+
+function persistPortalToDatabase(data) {
+    if (!pool) return;
+    const snapshot = JSON.stringify(data);
+    portalPersistChain = portalPersistChain
+        .then(() => databaseReady)
+        .then(() => pool.query(
+            `INSERT INTO app_state (key, value, updated_at) VALUES ('portal-data', $1::jsonb, NOW())
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+            [snapshot]
+        ))
+        .catch((error) => console.error("Portal data persistence error:", error.message));
+    return portalPersistChain;
+}
+
+async function loadPortalState() {
+    if (!pool) return;
+    await databaseReady;
+    await pool.query(`CREATE TABLE IF NOT EXISTS app_state (
+        key TEXT PRIMARY KEY,
+        value JSONB NOT NULL,
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )`);
+    const stored = await pool.query("SELECT value FROM app_state WHERE key = 'portal-data'");
+    if (stored.rows.length) {
+        portalCache = stored.rows[0].value;
+        console.log(`Loaded portal data from database: ${(portalCache.students || []).length} students, ${(portalCache.courses || []).length} courses.`);
+        return;
+    }
+    const fromFile = readJson(portalDataFilePath, null);
+    if (fromFile) {
+        portalCache = fromFile;
+        await persistPortalToDatabase(fromFile);
+        console.log(`Seeded database portal data from file: ${(fromFile.students || []).length} students.`);
+    }
+}
+
 function readPortalData() {
-    const data = readJson(portalDataFilePath, null);
+    const data = portalCache ? JSON.parse(JSON.stringify(portalCache)) : readJson(portalDataFilePath, null);
 
     if (!data) {
         const defaultData = {
@@ -296,7 +335,7 @@ function readPortalData() {
             results: [],
             fees: { total: 0, paid: 0, remaining: 0, dueDate: "", history: [] }
         };
-        writeJson(portalDataFilePath, defaultData);
+        writePortalData(defaultData);
         return defaultData;
     }
 
@@ -306,7 +345,16 @@ function readPortalData() {
 
 function writePortalData(data) {
     const normalized = { ...data, studentCourses: Array.isArray(data.studentCourses) ? data.studentCourses : [] };
-    writeJson(portalDataFilePath, normalized);
+    if (pool) {
+        portalCache = normalized;
+        persistPortalToDatabase(normalized);
+    }
+    try {
+        writeJson(portalDataFilePath, normalized);
+    } catch (error) {
+        if (!pool) throw error;
+        console.error("Portal data file write skipped:", error.message);
+    }
 }
 
 function getStudentByIdentifier(studentIdentifier) {
@@ -849,7 +897,15 @@ app.get("/api/student-dashboard/:studentId", requireAuth, canAccessStudent, (req
 });
 
 app.get("/api/admin-overview", requireAuth, requireRole("ADMIN"), (req, res) => {
-    res.json(getAdminOverview());
+    const overview = getAdminOverview();
+    console.log(`GET /api/admin-overview by ${req.auth && req.auth.email}: ${(overview.students || []).length} students`);
+    res.json(overview);
+});
+
+app.get("/students", requireAuth, requireRole("ADMIN"), (req, res) => {
+    const students = readPortalData().students || [];
+    console.log(`GET /students by ${req.auth && req.auth.email}: ${students.length} students`);
+    res.json(students);
 });
 
 const ADMISSION_GENDERS = ["Male", "Female", "Other"];
@@ -964,6 +1020,7 @@ app.post("/api/admin/students", requireAuth, requireRole("ADMIN"), async (req, r
             throw error;
         }
 
+        console.log(`Student created: id=${newStudent.id} studentId=${normalizedStudentId}; total students now ${data.students.length}; storage=${pool ? "postgres" : "file"}`);
         res.status(201).json({
             message: "Student added. Share these credentials with the student; the temporary password will not be shown again.",
             student: newStudent,
@@ -1292,6 +1349,11 @@ if (require.main === module) {
             if (await connectDB()) await seedAdminUser();
         } catch (error) {
             console.error("MongoDB admin setup failed:", error.message);
+        }
+        try {
+            await loadPortalState();
+        } catch (error) {
+            console.error("Portal state load failed:", error.message);
         }
         app.listen(port, "0.0.0.0", () => {
             console.log(`CampusDesk backend running on port ${port}`);
