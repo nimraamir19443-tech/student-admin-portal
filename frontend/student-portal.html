@@ -217,9 +217,7 @@
     function renderStats(student) {
       const cards = [
         { label: 'Enrolled Courses', value: (student.enrolledCourses || []).length },
-        { label: 'CGPA', value: Number(student.cgpa ?? 0).toFixed(2) },
-        { label: 'Attendance', value: `${student.attendance ?? 0}%` },
-        { label: 'Pending Assignments', value: student.pendingAssignments ?? 0 }
+        { label: 'Student ID', value: student.studentId || '—' }
       ];
 
       statsGrid.innerHTML = cards.map((card) => `
@@ -261,8 +259,7 @@
       }
       const percent = Math.round((completed / total) * 100);
       progressOverview.innerHTML = `
-        <div class="row"><span class="muted-rule">CGPA</span><strong>${(student.cgpa || 0).toFixed(2)}</strong></div>
-        <div class="row" style="margin-top: 12px;"><span class="muted-rule">Courses completed</span><strong>${completed}/${total}</strong></div>
+        <div class="row"><span class="muted-rule">Courses completed</span><strong>${completed}/${total}</strong></div>
         <div class="progress-wrap">
           <div class="progress-line"><div class="progress-bar" style="width:${percent}%"></div></div>
         </div>
@@ -316,7 +313,7 @@
         dashboardData = data;
         const student = data.student;
         document.getElementById('studentNameHeading').textContent = student.name;
-        document.getElementById('studentMeta').textContent = `${student.program} • Semester ${student.semester}`;
+        document.getElementById('studentMeta').textContent = `${student.program || ''}${student.studentId ? ' • ' + student.studentId : ''}`;
         document.getElementById('studentShortName').textContent = student.name.split(' ')[0];
         document.getElementById('studentInitials').textContent = student.name.split(' ').slice(0,2).map(part => part[0]).join('').toUpperCase();
 

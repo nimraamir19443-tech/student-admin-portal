@@ -23,7 +23,10 @@ delete process.env.DATABASE_URL;
 delete process.env.DB_PASSWORD;
 
 fs.writeFileSync(studentsPath, "[]");
-fs.writeFileSync(classesPath, "[]");
+
+function admission(name, studentId, overrides = {}) {
+    return { name, fatherName: "Test Father", studentId, program: "Computer Science", dateOfBirth: "2005-05-20", phone: "03001234567", address: "House 1, Lahore", previousSchool: "City School", ...overrides };
+}fs.writeFileSync(classesPath, "[]");
 fs.writeFileSync(portalDataPath, JSON.stringify({
     programs: [],
     students: [{
@@ -105,27 +108,36 @@ describe("admin-created student accounts", () => {
         const claimedExistingStudent = await request("/api/admin/students", {
             method: "POST",
             token: adminLogin.data.accessToken,
-            body: { name: "Impersonator", studentId: "STU-001", program: "Computer Science", semester: 1, cgpa: 3.2, attendance: 90 }
+            body: admission("Impersonator", "STU-001")
         });
         assert.equal(claimedExistingStudent.response.status, 409);
 
         const unauthenticatedCreate = await request("/api/admin/students", {
             method: "POST",
-            body: { name: "Test Student", studentId: "TEST-100", program: "Computer Science", semester: 1, cgpa: 3.2, attendance: 90 }
+            body: admission("Test Student", "TEST-100")
         });
         assert.equal(unauthenticatedCreate.response.status, 401);
 
         const invalidStudent = await request("/api/admin/students", {
             method: "POST",
             token: adminLogin.data.accessToken,
-            body: { name: "Test Student", studentId: "BAD ID", program: "Computer Science", semester: 1, cgpa: 3.2, attendance: 90 }
+            body: admission("Test Student", "BAD ID")
         });
         assert.equal(invalidStudent.response.status, 400);
+
+        for (const overrides of [{ fatherName: "" }, { phone: "abc" }, { dateOfBirth: "2999-01-01" }, { address: "" }]) {
+            const rejected = await request("/api/admin/students", {
+                method: "POST",
+                token: adminLogin.data.accessToken,
+                body: admission("Invalid Student", "INVALID-1", overrides)
+            });
+            assert.equal(rejected.response.status, 400);
+        }
 
         const created = await request("/api/admin/students", {
             method: "POST",
             token: adminLogin.data.accessToken,
-            body: { name: "Test Student", studentId: "TEST-100", program: "Computer Science", semester: 1, cgpa: 3.2, attendance: 90 }
+            body: admission("Test Student", "TEST-100")
         });
         assert.equal(created.response.status, 201);
         assert.match(created.data.credentials.email, /^test\.student\.[a-f0-9]+@students\.example\.test$/);
@@ -179,7 +191,7 @@ describe("admin-created student accounts", () => {
         const bulkCreated = await request("/api/admin/students/bulk", {
             method: "POST",
             token: adminLogin.data.accessToken,
-            body: { students: [{ name: "Bulk Student", studentId: "TEST-101", program: "Computer Science", semester: 1, cgpa: 2.8, attendance: 84 }] }
+            body: { students: [admission("Bulk Student", "TEST-101")] }
         });
         assert.equal(bulkCreated.response.status, 201);
         assert.equal(bulkCreated.data.credentials.length, 1);
@@ -239,7 +251,7 @@ describe("admin-created student accounts", () => {
         const createdStudent = await request("/api/admin/students", {
             method: "POST",
             token: adminLogin.data.accessToken,
-            body: { name: "Course Student", studentId: "COURSE-100", program: "Computer Science", semester: 2, cgpa: 3.5, attendance: 88 }
+            body: admission("Course Student", "COURSE-100")
         });
         assert.equal(createdStudent.response.status, 201);
 

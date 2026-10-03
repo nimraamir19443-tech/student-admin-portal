@@ -852,55 +852,77 @@ app.get("/api/admin-overview", requireAuth, requireRole("ADMIN"), (req, res) => 
     res.json(getAdminOverview());
 });
 
+const ADMISSION_GENDERS = ["Male", "Female", "Other"];
+
+function validateAdmissionInput(raw = {}) {
+    const value = {
+        name: String(raw.name || "").trim(),
+        fatherName: String(raw.fatherName || "").trim(),
+        studentId: String(raw.studentId || "").trim(),
+        program: String(raw.program || "").trim(),
+        dateOfBirth: String(raw.dateOfBirth || "").trim(),
+        gender: String(raw.gender || "").trim(),
+        phone: String(raw.phone || "").trim(),
+        contactEmail: String(raw.contactEmail || "").trim().toLowerCase(),
+        address: String(raw.address || "").trim(),
+        previousSchool: String(raw.previousSchool || "").trim()
+    };
+    const errors = [];
+
+    const missing = [
+        ["name", "student name"], ["fatherName", "father name"], ["studentId", "student ID"],
+        ["program", "program"], ["dateOfBirth", "date of birth"], ["phone", "phone number"], ["address", "address"]
+    ].filter(([key]) => !value[key]).map(([, label]) => label);
+    if (missing.length) errors.push(`Required: ${missing.join(", ")}.`);
+
+    if (value.name.length > 120 || value.fatherName.length > 120 || value.program.length > 120 || value.previousSchool.length > 160) {
+        errors.push("Name, father name, program, or previous school is too long.");
+    }
+    if (value.studentId && (value.studentId.length > 32 || !/^[A-Za-z0-9-]+$/.test(value.studentId))) {
+        errors.push("Student ID may contain only letters, numbers, and hyphens (max 32).");
+    }
+    if (value.dateOfBirth) {
+        const dob = new Date(`${value.dateOfBirth}T00:00:00Z`);
+        const validFormat = /^\d{4}-\d{2}-\d{2}$/.test(value.dateOfBirth) && !Number.isNaN(dob.getTime()) && dob.toISOString().slice(0, 10) === value.dateOfBirth;
+        if (!validFormat || dob > new Date() || dob.getUTCFullYear() < 1900) errors.push("Date of birth must be a valid past date (YYYY-MM-DD).");
+    }
+    if (value.phone && !/^\+?[0-9][0-9\s-]{6,19}$/.test(value.phone)) errors.push("Phone number is not valid.");
+    if (value.contactEmail && (value.contactEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.contactEmail))) errors.push("Contact email is not valid.");
+    if (value.gender && !ADMISSION_GENDERS.includes(value.gender)) errors.push("Gender must be Male, Female, or Other.");
+    if (value.address.length > 300) errors.push("Address is too long (max 300 characters).");
+
+    return { value, errors };
+}
+
+function buildAdmittedStudent(id, email, value) {
+    return {
+        id,
+        name: value.name,
+        fatherName: value.fatherName,
+        email,
+        studentId: value.studentId,
+        program: value.program,
+        dateOfBirth: value.dateOfBirth,
+        gender: value.gender,
+        phone: value.phone,
+        contactEmail: value.contactEmail,
+        address: value.address,
+        previousSchool: value.previousSchool,
+        completedCourses: [],
+        currentCourses: [],
+        enrolledCourses: [],
+        admissionStatus: "Approved",
+        role: "STUDENT"
+    };
+}
+
 app.post("/api/admin/students", requireAuth, requireRole("ADMIN"), async (req, res) => {
-    const {
-        name,
-        studentId,
-        program,
-        semester,
-        cgpa,
-        attendance,
-        pendingAssignments,
-        feeStatus,
-        feePaid,
-        feeTotal,
-        dueDate,
-        careerInterest,
-        interests,
-        admissionStatus
-    } = req.body || {};
-
-    const normalizedName = String(name || "").trim();
-    const normalizedStudentId = String(studentId || "").trim();
-    const normalizedProgram = String(program || "").trim();
-    const numericSemester = Number(semester);
-    const numericCgpa = Number(cgpa);
-    const numericAttendance = Number(attendance);
-
-    if (!normalizedName || !normalizedStudentId || !normalizedProgram) {
-        return res.status(400).json({ message: "Name, student ID, and program are required." });
+    const { value: admission, errors: validationErrors } = validateAdmissionInput(req.body);
+    if (validationErrors.length) {
+        return res.status(400).json({ message: validationErrors.join(" ") });
     }
-
-    if (normalizedName.length > 120 || normalizedStudentId.length > 32 || !/^[A-Za-z0-9-]+$/.test(normalizedStudentId) || normalizedProgram.length > 120) {
-        return res.status(400).json({ message: "Name, student ID, or program has an invalid format or is too long." });
-    }
-
-    if (!Number.isInteger(numericSemester) || numericSemester < 1) {
-        return res.status(400).json({ message: "Semester must be a positive whole number." });
-    }
-
-    if (!Number.isFinite(numericCgpa) || numericCgpa < 0 || numericCgpa > 4) {
-        return res.status(400).json({ message: "CGPA must be between 0 and 4." });
-    }
-
-    if (!Number.isFinite(numericAttendance) || numericAttendance < 0 || numericAttendance > 100) {
-        return res.status(400).json({ message: "Attendance must be between 0 and 100." });
-    }
-
-    const optionalAmounts = [pendingAssignments, feePaid, feeTotal];
-    if (optionalAmounts.some((value) => value !== undefined && value !== null && value !== "" && (!Number.isFinite(Number(value)) || Number(value) < 0))) {
-        return res.status(400).json({ message: "Assignments and fee amounts must be non-negative numbers." });
-    }
+    const normalizedName = admission.name;
+    const normalizedStudentId = admission.studentId;
 
     const data = readPortalData();
     const students = data.students || [];
@@ -916,29 +938,7 @@ app.post("/api/admin/students", requireAuth, requireRole("ADMIN"), async (req, r
     const reservedEmails = new Set([...students, ...existingAccounts].map((student) => String(student.email || "").toLowerCase()));
     const normalizedEmail = generateStudentEmail(normalizedName, reservedEmails);
     const temporaryPassword = generateTemporaryPassword();
-    const newStudent = {
-        id: nextPortalStudentId(students),
-        name: normalizedName,
-        email: normalizedEmail,
-        studentId: normalizedStudentId,
-        program: normalizedProgram,
-        semester: numericSemester,
-        currentSemester: numericSemester,
-        cgpa: numericCgpa,
-        attendance: numericAttendance,
-        pendingAssignments: Number.isFinite(Number(pendingAssignments)) ? Number(pendingAssignments) : 0,
-        feeStatus: String(feeStatus || "Pending").trim(),
-        feePaid: Number.isFinite(Number(feePaid)) ? Number(feePaid) : 0,
-        feeTotal: Number.isFinite(Number(feeTotal)) ? Number(feeTotal) : 0,
-        dueDate: String(dueDate || "").trim(),
-        careerInterest: String(careerInterest || "").trim(),
-        interests: String(interests || "").split(",").map((interest) => interest.trim()).filter(Boolean),
-        completedCourses: [],
-        currentCourses: [],
-        enrolledCourses: [],
-        admissionStatus: String(admissionStatus || "Approved").trim(),
-        role: "STUDENT"
-    };
+    const newStudent = buildAdmittedStudent(nextPortalStudentId(students), normalizedEmail, admission);
 
     try {
         if (pool) {
@@ -997,25 +997,13 @@ app.post("/api/admin/students/bulk", requireAuth, requireRole("ADMIN"), async (r
 
     records.forEach((record, index) => {
         const row = index + 2;
-        const normalizedName = String(record.name || "").trim();
-        const normalizedStudentId = String(record.studentId || "").trim();
-        const normalizedProgram = String(record.program || "").trim();
-        const numericSemester = Number(record.semester);
-        const numericCgpa = Number(record.cgpa);
-        const numericAttendance = Number(record.attendance);
-        const rowErrors = [];
-
-        if (!normalizedName || !normalizedStudentId || !normalizedProgram) {
-            rowErrors.push("name, studentId, and program are required");
-        }
-        if (normalizedName.length > 120 || normalizedStudentId.length > 32 || !/^[A-Za-z0-9-]+$/.test(normalizedStudentId) || normalizedProgram.length > 120) rowErrors.push("name, student ID, or program has an invalid format or is too long");
-        if (!Number.isInteger(numericSemester) || numericSemester < 1) rowErrors.push("semester must be a positive whole number");
-        if (!Number.isFinite(numericCgpa) || numericCgpa < 0 || numericCgpa > 4) rowErrors.push("cgpa must be between 0 and 4");
-        if (!Number.isFinite(numericAttendance) || numericAttendance < 0 || numericAttendance > 100) rowErrors.push("attendance must be between 0 and 100");
-        if (existingIds.has(normalizedStudentId.toLowerCase()) || batchIds.has(normalizedStudentId.toLowerCase())) rowErrors.push("student ID already exists");
+        const { value: admission, errors: rowErrors } = validateAdmissionInput(record);
+        const normalizedName = admission.name;
+        const normalizedStudentId = admission.studentId;
+        if (normalizedStudentId && (existingIds.has(normalizedStudentId.toLowerCase()) || batchIds.has(normalizedStudentId.toLowerCase()))) rowErrors.push("Student ID already exists.");
 
         if (rowErrors.length) {
-            errors.push(`Row ${row}: ${rowErrors.join("; ")}.`);
+            errors.push(`Row ${row}: ${rowErrors.join(" ")}`);
             return;
         }
 
@@ -1023,26 +1011,7 @@ app.post("/api/admin/students/bulk", requireAuth, requireRole("ADMIN"), async (r
         const email = generateStudentEmail(normalizedName, reservedEmails);
         const temporaryPassword = generateTemporaryPassword();
         const id = nextPortalStudentId([...students, ...newStudents]);
-        newStudents.push({
-            id,
-            name: normalizedName,
-            email,
-            studentId: normalizedStudentId,
-            program: normalizedProgram,
-            semester: numericSemester,
-            currentSemester: numericSemester,
-            cgpa: numericCgpa,
-            attendance: numericAttendance,
-            pendingAssignments: 0,
-            feeStatus: "Pending",
-            completedCourses: [],
-            currentCourses: [],
-            enrolledCourses: [],
-            interests: [],
-            admissionStatus: "Approved",
-            role: "STUDENT",
-            temporaryPassword
-        });
+        newStudents.push({ ...buildAdmittedStudent(id, email, admission), temporaryPassword });
     });
 
     if (errors.length) {
