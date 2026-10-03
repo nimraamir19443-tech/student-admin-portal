@@ -66,7 +66,16 @@
     fetch(API_BASE + '/api/student-dashboard/' + encodeURIComponent(studentId), {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     })
-      .then(async response => { if (!response.ok) throw new Error(); return response.json(); })
+      .then(async response => {
+        if (response.status === 401 || response.status === 403) {
+          window.location.replace('/login');
+          throw new Error('AUTH_REQUIRED');
+        }
+        if (!response.ok) {
+          throw new Error(response.status === 404 ? 'NOT_FOUND' : 'REQUEST_FAILED');
+        }
+        return response.json();
+      })
       .then(data => {
         const student = data.student || {};
         const program = student.program || 'Not assigned';
@@ -85,7 +94,13 @@
           <div class="layout"><section class="panel"><h2>Student and academic information</h2><div class="detail"><span>Student name</span><strong>${escapeHtml(student.name || '—')}</strong></div><div class="detail"><span>Email</span><strong>${escapeHtml(student.email || '—')}</strong></div><div class="detail"><span>Program</span><strong>${escapeHtml(program)}</strong></div><div class="detail"><span>Semester</span><strong>${escapeHtml(student.currentSemester || student.semester || '—')}</strong></div><div class="detail"><span>Attendance</span><strong>${escapeHtml(student.attendance ?? 0)}%</strong></div><div class="detail"><span>Pending assignments</span><strong>${escapeHtml(student.pendingAssignments ?? 0)}</strong></div><div class="detail"><span>Career interest</span><strong>${escapeHtml(student.careerInterest || '—')}</strong></div><div class="detail"><span>Interests</span><strong>${escapeHtml((student.interests || []).join(', ') || '—')}</strong></div><div class="detail"><span>Admission status</span><strong>${escapeHtml(student.admissionStatus || '—')}</strong></div></section><section class="panel"><h2>Fee summary</h2><div class="fee-box"><span class="sub">Total fee</span><strong>PKR ${Number(fees.total || 0).toLocaleString()}</strong><div class="detail"><span>Paid</span><strong>PKR ${Number(fees.paid || 0).toLocaleString()}</strong></div><div class="detail"><span>Remaining</span><strong>PKR ${Number(fees.remaining || 0).toLocaleString()}</strong></div><div class="detail"><span>Due date</span><strong>${escapeHtml(fees.dueDate || '—')}</strong></div></div><div class="actions"><button onclick="window.print()">Print profile</button><button onclick="location.href='/admin'">Admin view</button></div></section></div>
           <section class="panel enrollment-panel"><h2>Enrolled courses</h2><div class="course-list">${courseRows}</div></section>`;
       })
-      .catch(() => { profile.innerHTML = '<section class="panel"><h1>No data available</h1><p class="error">We could not find academic data for this account yet. If you just enrolled, please contact your administrator, or your session may have expired.</p></section>'; });
+      .catch((error) => {
+        if (error.message === 'AUTH_REQUIRED') return;
+        const message = error.message === 'NOT_FOUND'
+          ? 'We could not find academic data for this account yet. If you just enrolled, please contact your administrator.'
+          : 'We could not load your dashboard right now. Please try again in a moment.';
+        profile.innerHTML = `<section class="panel"><h1>No data available</h1><p class="error">${message}</p></section>`;
+      });
   </script>
 </body>
 </html>

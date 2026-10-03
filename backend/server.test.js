@@ -57,6 +57,7 @@ describe("Mongoose admin user model", () => {
             User.schema.s.hooks.execPre("save", user, (error) => error ? reject(error) : resolve());
         });
 
+
         assert.notEqual(user.password, "admin123");
         assert.match(user.password, /^\$2[aby]\$\d{2}\$/);
         assert.equal(user.role, "admin");
@@ -195,5 +196,73 @@ describe("admin-created student accounts", () => {
             token: adminLogin.data.accessToken
         });
         assert.equal(deleted.response.status, 200);
+    });
+
+    it("resolves student dashboards case-insensitively by studentId", async () => {
+        const adminLogin = await request("/login", {
+            method: "POST",
+            body: { email: "admin@example.test", password: "AdminPass123!" }
+        });
+        assert.equal(adminLogin.response.status, 200);
+
+        const dashboard = await request("/api/student-dashboard/stu-001", {
+            token: adminLogin.data.accessToken
+        });
+        assert.equal(dashboard.response.status, 200);
+        assert.equal(dashboard.data.student.studentId, "STU-001");
+    });
+
+    it("supports course management and student course assignment", async () => {
+        const adminLogin = await request("/login", {
+            method: "POST",
+            body: { email: "admin@example.test", password: "AdminPass123!" }
+        });
+        assert.equal(adminLogin.response.status, 200);
+
+        const createCourse = await request("/courses", {
+            method: "POST",
+            token: adminLogin.data.accessToken,
+            body: {
+                title: "Introduction to Algorithms",
+                description: "Core algorithm design concepts.",
+                duration: "8 weeks",
+                instructor: "Dr. Khan"
+            }
+        });
+        assert.equal(createCourse.response.status, 201);
+        assert.equal(createCourse.data.course.title, "Introduction to Algorithms");
+
+        const listCourses = await request("/api/courses", { token: adminLogin.data.accessToken });
+        assert.equal(listCourses.response.status, 200);
+        assert.ok(listCourses.data.some((course) => course.title === "Introduction to Algorithms"));
+
+        const createdStudent = await request("/api/admin/students", {
+            method: "POST",
+            token: adminLogin.data.accessToken,
+            body: { name: "Course Student", studentId: "COURSE-100", program: "Computer Science", semester: 2, cgpa: 3.5, attendance: 88 }
+        });
+        assert.equal(createdStudent.response.status, 201);
+
+        const assignCourse = await request("/assign-course", {
+            method: "POST",
+            token: adminLogin.data.accessToken,
+            body: {
+                studentId: "COURSE-100",
+                courseId: String(createCourse.data.course.id)
+            }
+        });
+        assert.equal(assignCourse.response.status, 201);
+
+        const studentDashboard = await request(`/api/student-dashboard/${encodeURIComponent("COURSE-100")}`, {
+            token: adminLogin.data.accessToken
+        });
+        assert.equal(studentDashboard.response.status, 200);
+        assert.ok(studentDashboard.data.myCourses.some((course) => course.title === "Introduction to Algorithms"));
+
+        const deleteCourse = await request(`/courses/${encodeURIComponent(createCourse.data.course.id)}`, {
+            method: "DELETE",
+            token: adminLogin.data.accessToken
+        });
+        assert.equal(deleteCourse.response.status, 200);
     });
 });

@@ -74,6 +74,24 @@ const databaseReady = pool
             ADD COLUMN IF NOT EXISTS password TEXT,
             ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'STUDENT',
             ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE
+    `)).then(() => pool.query(`
+        CREATE TABLE IF NOT EXISTS courses (
+            id BIGSERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            duration TEXT NOT NULL,
+            instructor TEXT NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+        )
+    `)).then(() => pool.query(`
+        CREATE TABLE IF NOT EXISTS student_courses (
+            id BIGSERIAL PRIMARY KEY,
+            student_id TEXT NOT NULL,
+            course_id BIGINT NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            UNIQUE (student_id, course_id)
+        )
     `))
     : Promise.resolve();
 
@@ -271,6 +289,7 @@ function readPortalData() {
             programs: [],
             students: [],
             courses: [],
+            studentCourses: [],
             announcements: [],
             admissions: [],
             notifications: [],
@@ -281,21 +300,47 @@ function readPortalData() {
         return defaultData;
     }
 
+    data.studentCourses = Array.isArray(data.studentCourses) ? data.studentCourses : [];
     return data;
 }
 
 function writePortalData(data) {
-    writeJson(portalDataFilePath, data);
+    const normalized = { ...data, studentCourses: Array.isArray(data.studentCourses) ? data.studentCourses : [] };
+    writeJson(portalDataFilePath, normalized);
 }
 
 function getStudentByIdentifier(studentIdentifier) {
     const data = readPortalData();
     const normalized = String(studentIdentifier || "").trim();
+    const normalizedLower = normalized.toLowerCase();
 
     return data.students.find((student) => {
         if (!student) return false;
-        return String(student.id) === normalized || student.studentId === normalized || student.email === normalized;
+        const studentId = String(student.studentId || "").trim();
+        const email = String(student.email || "").trim();
+        return String(student.id) === normalized ||
+            studentId.toLowerCase() === normalizedLower ||
+            email.toLowerCase() === normalizedLower;
     }) || null;
+}
+
+function getStudentCourseAssignmentIds(studentIdentifier) {
+    const data = readPortalData();
+    const normalizedStudentId = String(studentIdentifier || "").trim();
+    const student = getStudentByIdentifier(normalizedStudentId);
+    const studentKey = student ? String(student.studentId || student.id || "") : normalizedStudentId;
+    const assignedIds = (data.studentCourses || [])
+        .filter((entry) => {
+            if (!entry) return false;
+            const targetStudent = String(entry.studentId || entry.student || "").trim();
+            const targetStudentId = String(entry.student_id || "").trim();
+            return targetStudent === studentKey || targetStudentId === studentKey ||
+                (student && (String(student.id) === String(entry.studentId || entry.student || "") || String(student.studentId || student.id) === String(entry.studentId || entry.student || "")));
+        })
+        .map((entry) => String(entry.courseId || entry.course || entry.course_id || ""))
+        .filter(Boolean);
+
+    return [...new Set(assignedIds)];
 }
 
 function getStudentDashboard(studentId) {
@@ -308,32 +353,38 @@ function getStudentDashboard(studentId) {
 
     const courseCatalog = data.courses || [];
     const coursesById = new Map(courseCatalog.flatMap((course) => [
-        [String(course.id), course],
-        [String(course.code), course]
+        [String(course.id), { ...course, name: course.title || course.name || course.code || "Course", code: course.code || String(course.id) }],
+        [String(course.code), { ...course, name: course.title || course.name || course.code || "Course", code: course.code || String(course.id) }],
+        [String(course.title || ""), { ...course, name: course.title || course.name || course.code || "Course", code: course.code || String(course.id) }]
     ]));
     const enrolledCourseIds = [...new Set([
         ...(student.enrolledCourses || []),
-        ...(student.currentCourses || [])
+        ...(student.currentCourses || []),
+        ...getStudentCourseAssignmentIds(student.studentId || student.id)
     ])];
-    const myCourses = enrolledCourseIds.map((courseId) => coursesById.get(String(courseId)) || ({
-        id: String(courseId),
-        code: String(courseId),
-        name: String(courseId),
-        instructor: "Not listed",
-        credits: null,
-        semester: null,
-        schedule: "Contact administration for course details",
-        enrollmentStatus: "Enrolled",
-        courseDetailsAvailable: false
-    }));
+    const myCourses = enrolledCourseIds.map((courseId) => {
+        const found = coursesById.get(String(courseId));
+        return found || {
+            id: String(courseId),
+            code: String(courseId),
+            name: String(courseId),
+            title: String(courseId),
+            instructor: "Not listed",
+            credits: null,
+            semester: null,
+            schedule: "Contact administration for course details",
+            enrollmentStatus: "Enrolled",
+            courseDetailsAvailable: false
+        };
+    });
 
     const attendance = myCourses.map((course) => ({
-        course: course.name,
+        course: course.title || course.name || course.code || "Course",
         percentage: Number(student.attendance || 0)
     }));
     const timetable = myCourses.map((course) => ({
-        courseCode: course.code,
-        courseName: course.name,
+        courseCode: course.code || course.id,
+        courseName: course.title || course.name || course.code || "Course",
         instructor: course.instructor || "Not listed",
         schedule: course.schedule || "Not scheduled yet"
     }));
@@ -400,6 +451,48 @@ function getAdminOverview() {
         admissions: data.admissions || [],
         notifications: data.notifications || []
     };
+}
+
+function nextCourseId(existingCourses) {
+    const numericIds = (existingCourses || []).map((course) => Number(course.id)).filter(Number.isFinite);
+    let nextId = 1;
+    while (numericIds.includes(nextId)) nextId += 1;
+    return nextId;
+}
+
+function normalizeCourseInput(rawCourse = {}) {
+    const title = String(rawCourse.title || "").trim();
+    const description = String(rawCourse.description || "").trim();
+    const duration = String(rawCourse.duration || "").trim();
+    const instructor = String(rawCourse.instructor || "").trim();
+
+    if (!title || !description || !duration || !instructor) {
+        throw new Error("Course title, description, duration, and instructor are required.");
+    }
+
+    if (title.length > 120 || description.length > 1000 || duration.length > 50 || instructor.length > 120) {
+        throw new Error("Course title, description, duration, and instructor are too long.");
+    }
+
+    return {
+        title,
+        description,
+        duration,
+        instructor
+    };
+}
+
+function getStudentCourseAssignments(studentIdentifier) {
+    const data = readPortalData();
+    const normalizedStudentId = String(studentIdentifier || "").trim();
+    const student = getStudentByIdentifier(normalizedStudentId);
+    const studentKey = student ? String(student.studentId || student.id || "") : normalizedStudentId;
+
+    return (data.studentCourses || []).filter((entry) => {
+        if (!entry) return false;
+        const recordStudentId = String(entry.studentId || entry.student || entry.student_id || "").trim();
+        return recordStudentId === studentKey || (student && (String(student.id) === recordStudentId || String(student.studentId || student.id) === recordStudentId));
+    });
 }
 
 if (pool) {
@@ -543,18 +636,208 @@ app.get("/api/programs", requireAuth, requireRole("ADMIN"), (req, res) => {
     res.json(readPortalData().programs || []);
 });
 
-app.get("/api/courses", (req, res) => {
-    res.json(readPortalData().courses || []);
+app.get("/api/my-courses", requireAuth, (req, res) => {
+    const studentIdentifier = String(req.auth.studentId || req.auth.id || "").trim();
+    const data = readPortalData();
+    const student = getStudentByIdentifier(studentIdentifier);
+
+    if (!student) {
+        return res.status(404).json({ message: "Student record not found." });
+    }
+
+    const assignedCourseIds = new Set(getStudentCourseAssignments(student.studentId || student.id));
+    const myCourses = (data.courses || []).filter((course) => assignedCourseIds.has(String(course.id)) || assignedCourseIds.has(String(course.code)));
+    res.json(myCourses);
 });
 
-app.get("/api/courses/:courseId", (req, res) => {
-    const course = (readPortalData().courses || []).find((item) => item.id === req.params.courseId || item.code === req.params.courseId);
+app.get("/courses", requireAuth, (req, res) => {
+    const data = readPortalData();
+    if (req.auth.role === "ADMIN") {
+        return res.json(data.courses || []);
+    }
+
+    const studentIdentifier = String(req.auth.studentId || req.auth.id || "").trim();
+    const student = getStudentByIdentifier(studentIdentifier);
+    if (!student) {
+        return res.status(404).json({ message: "Student record not found." });
+    }
+
+    const assignedCourseIds = new Set(getStudentCourseAssignments(student.studentId || student.id));
+    const myCourses = (data.courses || []).filter((course) => assignedCourseIds.has(String(course.id)) || assignedCourseIds.has(String(course.code)));
+    res.json(myCourses);
+});
+
+app.get("/api/courses", requireAuth, (req, res) => {
+    const data = readPortalData();
+    if (req.auth.role === "ADMIN") {
+        return res.json(data.courses || []);
+    }
+
+    const studentIdentifier = String(req.auth.studentId || req.auth.id || "").trim();
+    const student = getStudentByIdentifier(studentIdentifier);
+    if (!student) {
+        return res.status(404).json({ message: "Student record not found." });
+    }
+
+    const assignedCourseIds = new Set(getStudentCourseAssignments(student.studentId || student.id));
+    const myCourses = (data.courses || []).filter((course) => assignedCourseIds.has(String(course.id)) || assignedCourseIds.has(String(course.code)));
+    res.json(myCourses);
+});
+
+app.get("/api/courses/:courseId", requireAuth, (req, res) => {
+    const data = readPortalData();
+    const course = (data.courses || []).find((item) => String(item.id) === String(req.params.courseId) || String(item.code || item.id) === String(req.params.courseId));
 
     if (!course) {
         return res.status(404).json({ message: "Course not found." });
     }
 
+    if (req.auth.role !== "ADMIN") {
+        const studentIdentifier = String(req.auth.studentId || req.auth.id || "").trim();
+        const assignedCourseIds = new Set(getStudentCourseAssignments(studentIdentifier));
+        if (!assignedCourseIds.has(String(course.id)) && !assignedCourseIds.has(String(course.code || course.id))) {
+            return res.status(403).json({ message: "You can only view courses assigned to you." });
+        }
+    }
+
     res.json(course);
+});
+
+app.post("/courses", requireAuth, requireRole("ADMIN"), (req, res) => {
+    try {
+        const data = readPortalData();
+        const courseInput = normalizeCourseInput(req.body || {});
+        const duplicate = (data.courses || []).some((course) => String(course.title || "").trim().toLowerCase() === courseInput.title.toLowerCase());
+        if (duplicate) {
+            return res.status(409).json({ message: "A course with this title already exists." });
+        }
+
+        const newCourse = {
+            id: nextCourseId(data.courses || []),
+            title: courseInput.title,
+            description: courseInput.description,
+            duration: courseInput.duration,
+            instructor: courseInput.instructor,
+            code: `CRS-${String(nextCourseId(data.courses || [])).padStart(3, "0")}`
+        };
+
+        data.courses = [...(data.courses || []), newCourse];
+        writePortalData(data);
+        res.status(201).json({ message: "Course created successfully.", course: newCourse });
+    } catch (error) {
+        res.status(400).json({ message: error.message || "Unable to create course." });
+    }
+});
+
+app.put("/courses/:id", requireAuth, requireRole("ADMIN"), (req, res) => {
+    try {
+        const data = readPortalData();
+        const courseId = String(req.params.id || "").trim();
+        const courseIndex = (data.courses || []).findIndex((course) => String(course.id) === courseId || String(course.code || course.id) === courseId);
+
+        if (courseIndex === -1) {
+            return res.status(404).json({ message: "Course not found." });
+        }
+
+        const courseInput = normalizeCourseInput(req.body || {});
+        const duplicate = (data.courses || []).some((course, index) => index !== courseIndex && String(course.title || "").trim().toLowerCase() === courseInput.title.toLowerCase());
+        if (duplicate) {
+            return res.status(409).json({ message: "A course with this title already exists." });
+        }
+
+        const updatedCourse = {
+            ...data.courses[courseIndex],
+            title: courseInput.title,
+            description: courseInput.description,
+            duration: courseInput.duration,
+            instructor: courseInput.instructor,
+            code: data.courses[courseIndex].code || `CRS-${String(data.courses[courseIndex].id).padStart(3, "0")}`
+        };
+
+        data.courses[courseIndex] = updatedCourse;
+        writePortalData(data);
+        res.json({ message: "Course updated successfully.", course: updatedCourse });
+    } catch (error) {
+        res.status(400).json({ message: error.message || "Unable to update course." });
+    }
+});
+
+app.delete("/courses/:id", requireAuth, requireRole("ADMIN"), (req, res) => {
+    const data = readPortalData();
+    const courseId = String(req.params.id || "").trim();
+    const beforeLength = (data.courses || []).length;
+
+    data.courses = (data.courses || []).filter((course) => String(course.id) !== courseId && String(course.code || course.id) !== courseId);
+    data.studentCourses = (data.studentCourses || []).filter((entry) => String(entry.courseId || entry.course || entry.course_id || "") !== courseId);
+
+    (data.students || []).forEach((student) => {
+        const current = new Set([...(student.enrolledCourses || []), ...(student.currentCourses || [])]);
+        if (current.delete(courseId)) {
+            student.enrolledCourses = [...current].filter((item) => String(item) !== courseId);
+            student.currentCourses = [...current].filter((item) => String(item) !== courseId);
+        }
+    });
+
+    if ((data.courses || []).length === beforeLength) {
+        return res.status(404).json({ message: "Course not found." });
+    }
+
+    writePortalData(data);
+    res.json({ message: "Course deleted successfully." });
+});
+
+app.post("/assign-course", requireAuth, requireRole("ADMIN"), (req, res) => {
+    try {
+        const { studentId, courseId } = req.body || {};
+        const normalizedStudentId = String(studentId || "").trim();
+        const normalizedCourseId = String(courseId || "").trim();
+
+        if (!normalizedStudentId || !normalizedCourseId) {
+            return res.status(400).json({ message: "Student ID and course ID are required." });
+        }
+
+        const data = readPortalData();
+        const student = getStudentByIdentifier(normalizedStudentId);
+        const course = (data.courses || []).find((item) => String(item.id) === normalizedCourseId || String(item.code || item.id) === normalizedCourseId);
+
+        if (!student) {
+            return res.status(404).json({ message: "Student not found." });
+        }
+
+        if (!course) {
+            return res.status(404).json({ message: "Course not found." });
+        }
+
+        const studentKey = String(student.studentId || student.id);
+        const assignmentExists = (data.studentCourses || []).some((entry) => {
+            const entryStudentKey = String(entry.studentId || entry.student || entry.student_id || "").trim();
+            const entryCourseKey = String(entry.courseId || entry.course || entry.course_id || "").trim();
+            return entryStudentKey === studentKey && entryCourseKey === String(course.id);
+        });
+
+        if (!assignmentExists) {
+            data.studentCourses = [...(data.studentCourses || []), {
+                studentId: studentKey,
+                courseId: String(course.id)
+            }];
+        }
+
+        const studentIndex = (data.students || []).findIndex((entry) => String(entry.studentId || entry.id) === String(student.studentId || student.id));
+        if (studentIndex >= 0) {
+            const enrolled = new Set([...(data.students[studentIndex].enrolledCourses || []), ...(data.students[studentIndex].currentCourses || [])]);
+            enrolled.add(String(course.id));
+            data.students[studentIndex].enrolledCourses = [...enrolled];
+            data.students[studentIndex].currentCourses = [...enrolled];
+        }
+
+        writePortalData(data);
+        res.status(assignmentExists ? 200 : 201).json({
+            message: assignmentExists ? "Course already assigned to this student." : "Course assigned to student successfully.",
+            assignment: { studentId: studentKey, courseId: String(course.id) }
+        });
+    } catch (error) {
+        res.status(400).json({ message: error.message || "Unable to assign course." });
+    }
 });
 
 app.get("/api/student-dashboard/:studentId", requireAuth, canAccessStudent, (req, res) => {

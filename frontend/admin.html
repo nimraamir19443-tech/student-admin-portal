@@ -160,6 +160,49 @@
 
       <section class="panel-row">
         <div class="panel">
+          <h2>Course Management</h2>
+          <form id="courseForm" class="student-form" style="margin-bottom: 10px;">
+            <input id="courseId" type="hidden" />
+            <input id="courseTitle" type="text" placeholder="Course title" required />
+            <input id="courseDuration" type="text" placeholder="Duration (e.g. 8 weeks)" required />
+            <input id="courseInstructor" type="text" placeholder="Instructor" required />
+            <textarea id="courseDescription" rows="3" placeholder="Course description" required style="grid-column: 1 / -1; width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 11px 12px; resize: vertical;"></textarea>
+            <button type="submit" class="primary-btn" id="courseSaveButton">Save course</button>
+            <button type="button" class="secondary-btn" id="courseCancelButton" style="grid-column: 1 / -1; justify-self: start;">Cancel</button>
+          </form>
+          <div id="courseMessage" class="empty" aria-live="polite"></div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Duration</th>
+                  <th>Instructor</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="courseTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Assign Course to Student</h2>
+          <form id="assignCourseForm" class="student-form" style="margin-bottom: 0;">
+            <select id="assignStudentSelect" required>
+              <option value="">Select student</option>
+            </select>
+            <select id="assignCourseSelect" required>
+              <option value="">Select course</option>
+            </select>
+            <button type="submit" class="primary-btn">Assign course</button>
+          </form>
+          <div id="assignCourseMessage" class="empty" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="panel-row">
+        <div class="panel">
           <h2>Announcements</h2>
           <div id="announcementList" class="mini-list"></div>
         </div>
@@ -224,6 +267,13 @@
     const studentModal = document.getElementById('studentModal');
     const credentialPanel = document.getElementById('createdCredentials');
     const credentialList = document.getElementById('generatedCredentialsList');
+    const courseForm = document.getElementById('courseForm');
+    const courseTableBody = document.getElementById('courseTableBody');
+    const courseMessage = document.getElementById('courseMessage');
+    const assignCourseForm = document.getElementById('assignCourseForm');
+    const assignStudentSelect = document.getElementById('assignStudentSelect');
+    const assignCourseSelect = document.getElementById('assignCourseSelect');
+    const assignCourseMessage = document.getElementById('assignCourseMessage');
     const savedSession = (() => { try { return JSON.parse(sessionStorage.getItem('student') || 'null'); } catch { return null; } })();
     const accessToken = sessionStorage.getItem('accessToken');
     const hasAdminAccess = savedSession?.role === 'ADMIN' && Boolean(accessToken);
@@ -336,6 +386,44 @@
       `).join('') : '<div class="empty">No announcements available.</div>';
     }
 
+    function renderCourses(courses) {
+      const rows = (courses || []).map((course) => `
+        <tr>
+          <td>${escapeHtml(course.title || course.name || 'Untitled course')}</td>
+          <td>${escapeHtml(course.duration || '—')}</td>
+          <td>${escapeHtml(course.instructor || '—')}</td>
+          <td>
+            <button type="button" class="secondary-btn" data-course-edit="${course.id}">Edit</button>
+            <button type="button" class="delete-btn" data-course-delete="${course.id}" style="margin-left: 8px;">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+      courseTableBody.innerHTML = rows || '<tr><td colspan="4"><div class="empty">No courses yet.</div></td></tr>';
+    }
+
+    async function populateCourseAndStudentOptions() {
+      try {
+        const [coursesResponse, studentsResponse] = await Promise.all([
+          authorizedFetch(`${API_BASE}/api/courses`),
+          authorizedFetch(`${API_BASE}/api/admin-overview`)
+        ]);
+
+        const courses = coursesResponse.ok ? await coursesResponse.json() : [];
+        const adminOverview = studentsResponse.ok ? await studentsResponse.json() : { students: [] };
+        const students = adminOverview.students || [];
+
+        assignCourseSelect.innerHTML = '<option value="">Select course</option>' + (courses || []).map((course) => `
+          <option value="${course.id}">${escapeHtml(course.title || course.name || 'Untitled course')}</option>
+        `).join('');
+
+        assignStudentSelect.innerHTML = '<option value="">Select student</option>' + (students || []).map((student) => `
+          <option value="${student.studentId || student.id}">${escapeHtml(student.name)} (${escapeHtml(student.studentId || student.id)})</option>
+        `).join('');
+      } catch (error) {
+        console.error('Unable to load courses and students for assignment:', error);
+      }
+    }
+
     async function loadDashboard() {
       try {
         if (!hasAdminAccess) return;
@@ -349,6 +437,8 @@
         renderStudents(overview);
         renderAdmissions(overview);
         renderAnnouncements(overview);
+        renderCourses(overview.courses || []);
+        await populateCourseAndStudentOptions();
       } catch (error) {
         console.error('Unable to load admin dashboard:', error);
         statsGrid.innerHTML = '<div class="empty">The dashboard is temporarily unavailable. Please try again after the backend is redeployed.</div>';
@@ -372,6 +462,102 @@
         return;
       }
 
+      await loadDashboard();
+    });
+
+    courseTableBody.addEventListener('click', async (event) => {
+      const editButton = event.target.closest('[data-course-edit]');
+      if (editButton) {
+        const courseId = editButton.dataset.courseEdit;
+        const response = await authorizedFetch(`${API_BASE}/api/courses/${encodeURIComponent(courseId)}`);
+        const result = await response.json();
+        if (!response.ok) {
+          alert(result.message || 'Unable to load course.');
+          return;
+        }
+
+        document.getElementById('courseId').value = result.id;
+        document.getElementById('courseTitle').value = result.title || '';
+        document.getElementById('courseDescription').value = result.description || '';
+        document.getElementById('courseDuration').value = result.duration || '';
+        document.getElementById('courseInstructor').value = result.instructor || '';
+        document.getElementById('courseSaveButton').textContent = 'Update course';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      const deleteButton = event.target.closest('[data-course-delete]');
+      if (!deleteButton) return;
+      if (!confirm('Delete this course?')) return;
+
+      const response = await authorizedFetch(`${API_BASE}/courses/${encodeURIComponent(deleteButton.dataset.courseDelete)}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (!response.ok) {
+        alert(result.message || 'Unable to delete course.');
+        return;
+      }
+
+      courseMessage.textContent = result.message || 'Course deleted successfully.';
+      await loadDashboard();
+    });
+
+    courseForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const courseId = document.getElementById('courseId').value;
+      const payload = {
+        title: document.getElementById('courseTitle').value,
+        description: document.getElementById('courseDescription').value,
+        duration: document.getElementById('courseDuration').value,
+        instructor: document.getElementById('courseInstructor').value
+      };
+
+      const response = await authorizedFetch(`${API_BASE}${courseId ? `/courses/${encodeURIComponent(courseId)}` : '/courses'}`, {
+        method: courseId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        courseMessage.textContent = result.message || 'Unable to save course.';
+        courseMessage.className = 'empty';
+        return;
+      }
+
+      courseMessage.textContent = result.message || (courseId ? 'Course updated successfully.' : 'Course saved successfully.');
+      courseMessage.className = 'empty';
+      courseForm.reset();
+      document.getElementById('courseId').value = '';
+      document.getElementById('courseSaveButton').textContent = 'Save course';
+      await loadDashboard();
+    });
+
+    document.getElementById('courseCancelButton').addEventListener('click', () => {
+      courseForm.reset();
+      document.getElementById('courseId').value = '';
+      document.getElementById('courseSaveButton').textContent = 'Save course';
+    });
+
+    assignCourseForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const studentId = assignStudentSelect.value;
+      const courseId = assignCourseSelect.value;
+      if (!studentId || !courseId) {
+        assignCourseMessage.textContent = 'Please select both a student and a course.';
+        return;
+      }
+
+      const response = await authorizedFetch(`${API_BASE}/assign-course`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId, courseId })
+      });
+      const result = await response.json();
+      assignCourseMessage.textContent = result.message || 'Course assignment updated.';
+      if (!response.ok) {
+        return;
+      }
+      assignCourseForm.reset();
       await loadDashboard();
     });
 
